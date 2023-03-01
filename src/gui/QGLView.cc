@@ -426,6 +426,13 @@ void QGLView::translate(double x, double y, double z, bool relative, bool viewPo
   emit cameraChanged();
 }
 
+void QGLView::applyAffine(Eigen::Matrix4d const& matx)
+{
+	cam.setAffine(matx);
+	update();
+	emit cameraChanged();
+}
+
 void QGLView::rotate(double x, double y, double z, bool relative)
 {
   double f = relative ? 1 : 0;

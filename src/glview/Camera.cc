@@ -3,87 +3,102 @@
 #include "printutils.h"
 #include "degree_trig.h"
 
+static inline double rad2deg(double x)
+{
+	return x * M_RAD2DEG;
+}
+
+static inline double deg2rad(double x)
+{
+	return x * M_DEG2RAD;
+}
+
 static const double DEFAULT_DISTANCE = 140.0;
 static const double DEFAULT_FOV = 22.5;
 
 Camera::Camera() : fov(DEFAULT_FOV)
 {
-  PRINTD("Camera()");
+	PRINTD("Camera()");
 
-  // gimbal cam values
-  resetView();
+	// gimbal cam values
+	resetView();
 
-  pixel_width = RenderSettings::inst()->img_width;
-  pixel_height = RenderSettings::inst()->img_height;
-  locked = false;
+	pixel_width = RenderSettings::inst()->img_width;
+	pixel_height = RenderSettings::inst()->img_height;
+	locked = false;
 }
 
 void Camera::setup(std::vector<double> params)
 {
-  if (params.size() == 7) {
-    setVpt(params[0], params[1], params[2]);
-    setVpr(params[3], params[4], params[5]);
-    viewer_distance = params[6];
-  } else if (params.size() == 6) {
-    const Eigen::Vector3d eye(params[0], params[1], params[2]);
-    const Eigen::Vector3d center(params[3], params[4], params[5]);
-    object_trans = -center;
-    auto dir = center - eye;
-    viewer_distance = dir.norm();
-    object_rot.z() = (!dir[1] && !dir[0]) ? dir[2] < 0 ? 0
-                                           : 180
-                              : -atan2_degrees(dir[1], dir[0]) + 90;
-    object_rot.y() = 0;
-    Eigen::Vector3d projection(dir[0], dir[1], 0);
-    object_rot.x() = -atan2_degrees(dir[2], projection.norm());
-  } else {
+	if (params.size() == 7) {
+		setVpt(params[0], params[1], params[2]);
+		setVpr(params[3], params[4], params[5]);
+		viewer_distance = params[6];
+	} else if (params.size() == 6) {
+		const Eigen::Vector3d eye(params[0], params[1], params[2]);
+		const Eigen::Vector3d center(params[3], params[4], params[5]);
+		object_trans = -center;
+		auto dir = center - eye;
+		viewer_distance = dir.norm();
+		object_rot.z() = (!dir[1] && !dir[0]) ? dir[2] < 0 ? 0
+			                                                 : 180
+		                                      : -atan2_degrees(dir[1], dir[0]) + 90;
+		object_rot.y() = 0;
+		Eigen::Vector3d projection(dir[0], dir[1], 0);
+		object_rot.x() = -atan2_degrees(dir[2], projection.norm());
+	} else {
     assert(false && "Gimbal cam needs 7 numbers, Vector camera needs 6");
-  }
-  locked = true;
+	}
+	locked = true;
 }
 /*!
-   Moves camera so that the given bbox is fully visible.
- */
+	Moves camera so that the given bbox is fully visible.
+*/
 void Camera::viewAll(const BoundingBox& bbox)
 {
-  if (bbox.isEmpty()) {
-    setVpt(0, 0, 0);
-    setVpd(DEFAULT_DISTANCE);
-  } else {
+	if (bbox.isEmpty()) {
+		setVpt(0, 0, 0);
+		setVpd(DEFAULT_DISTANCE);
+	} else {
 
-    if (this->autocenter) {
-      // autocenter = point camera at the center of the bounding box.
-      this->object_trans = -bbox.center();
-    }
+		if (this->autocenter) {
+			// autocenter = point camera at the center of the bounding box.
+			this->object_trans = -bbox.center();
+		}
 
-    double bboxRadius = bbox.diagonal().norm() / 2;
-    double radius = (bbox.center() + object_trans).norm() + bboxRadius;
-    this->viewer_distance = radius / sin_degrees(this->fov / 2);
+		double bboxRadius = bbox.diagonal().norm() / 2;
+		double radius = (bbox.center() + object_trans).norm() + bboxRadius;
+		this->viewer_distance = radius / sin_degrees(this->fov / 2);
     PRINTDB("modified obj trans x y z %f %f %f", object_trans.x() % object_trans.y() % object_trans.z());
-    PRINTDB("modified obj rot   x y z %f %f %f", object_rot.x() % object_rot.y() % object_rot.z());
-  }
+		PRINTDB("modified obj rot   x y z %f %f %f", object_rot.x() % object_rot.y() % object_rot.z());
+	}
 }
 
 void Camera::zoom(int zoom, bool relative)
 {
-  if (relative) {
-    this->viewer_distance *= pow(0.9, zoom / 120.0);
-  } else {
-    this->viewer_distance = zoom;
-  }
+	if (relative) {
+		this->viewer_distance *= pow(0.9, zoom / 120.0);
+	} else {
+		this->viewer_distance = zoom;
+	}
+}
+
+Camera::ProjectionType Camera::GetProjection() const
+{
+	return this->projection;
 }
 
 void Camera::setProjection(ProjectionType type)
 {
-  this->projection = type;
+	this->projection = type;
 }
 
 void Camera::resetView()
 {
-  setVpr(55, 0, 25); // set in user space units
-  setVpt(0, 0, 0);
-  setVpd(DEFAULT_DISTANCE);
-  setVpf(DEFAULT_FOV);
+	setVpr(55, 0, 25); // set in user space units
+	setVpt(0, 0, 0);
+	setVpd(DEFAULT_DISTANCE);
+	setVpf(DEFAULT_FOV);
 }
 
 /*!
@@ -95,68 +110,68 @@ void Camera::updateView(const std::shared_ptr<const FileContext>& context, bool 
 {
   if (locked) return;
 
-  bool noauto = false;
-  double x, y, z;
-  const auto vpr = context->lookup_local_variable("$vpr");
-  if (vpr) {
-    if (vpr->getVec3(x, y, z, 0.0)) {
-      setVpr(x, y, z);
-      noauto = true;
-    } else {
-      LOG(message_group::Warning, Location::NONE, "", "Unable to convert $vpr=%1$s to a vec3 or vec2 of numbers", vpr->toEchoString());
-    }
-  }
+	bool noauto = false;
+	double x, y, z;
+	const auto vpr = context->lookup_local_variable("$vpr");
+	if (vpr) {
+		if (vpr->getVec3(x, y, z, 0.0)) {
+			setVpr(x, y, z);
+			noauto = true;
+		} else {
+			LOG(message_group::Warning, Location::NONE, "", "Unable to convert $vpr=%1$s to a vec3 or vec2 of numbers", vpr->toEchoString());
+		}
+	}
 
-  const auto vpt = context->lookup_local_variable("$vpt");
-  if (vpt) {
-    if (vpt->getVec3(x, y, z, 0.0)) {
-      setVpt(x, y, z);
-      noauto = true;
-    } else {
-      LOG(message_group::Warning, Location::NONE, "", "Unable to convert $vpt=%1$s to a vec3 or vec2 of numbers", vpt->toEchoString());
-    }
-  }
+	const auto vpt = context->lookup_local_variable("$vpt");
+	if (vpt) {
+		if (vpt->getVec3(x, y, z, 0.0)) {
+			setVpt(x, y, z);
+			noauto = true;
+		} else {
+			LOG(message_group::Warning, Location::NONE, "", "Unable to convert $vpt=%1$s to a vec3 or vec2 of numbers", vpt->toEchoString());
+		}
+	}
 
-  const auto vpd = context->lookup_local_variable("$vpd");
-  if (vpd) {
-    if (vpd->type() == Value::Type::NUMBER) {
-      setVpd(vpd->toDouble());
-      noauto = true;
-    } else {
-      LOG(message_group::Warning, Location::NONE, "", "Unable to convert $vpd=%1$s to a number", vpd->toEchoString());
-    }
-  }
+	const auto vpd = context->lookup_local_variable("$vpd");
+	if (vpd) {
+		if (vpd->type() == Value::Type::NUMBER) {
+			setVpd(vpd->toDouble());
+			noauto = true;
+		} else {
+			LOG(message_group::Warning, Location::NONE, "", "Unable to convert $vpd=%1$s to a number", vpd->toEchoString());
+		}
+	}
 
-  const auto vpf = context->lookup_local_variable("$vpf");
-  if (vpf) {
-    if (vpf->type() == Value::Type::NUMBER) {
-      setVpf(vpf->toDouble());
-      noauto = true;
-    } else {
-      LOG(message_group::Warning, Location::NONE, "", "Unable to convert $vpf=%1$s to a number", vpf->toEchoString());
-    }
-  }
+	const auto vpf = context->lookup_local_variable("$vpf");
+	if (vpf) {
+		if (vpf->type() == Value::Type::NUMBER) {
+			setVpf(vpf->toDouble());
+			noauto = true;
+		} else {
+			LOG(message_group::Warning, Location::NONE, "", "Unable to convert $vpf=%1$s to a number", vpf->toEchoString());
+		}
+	}
 
-  if (enableWarning && (viewall || autocenter) && noauto) {
-    LOG(message_group::UI_Warning, Location::NONE, "", "Viewall and autocenter disabled in favor of $vp*");
-    viewall = false;
-    autocenter = false;
-  }
+	if (enableWarning && (viewall || autocenter) && noauto) {
+		LOG(message_group::UI_Warning, Location::NONE, "", "Viewall and autocenter disabled in favor of $vp*");
+		viewall = false;
+		autocenter = false;
+	}
 }
 
 Eigen::Vector3d Camera::getVpt() const
 {
-  return -object_trans;
+	return -object_trans;
 }
 
 void Camera::setVpt(double x, double y, double z)
 {
-  object_trans << -x, -y, -z;
+	object_trans << -x, -y, -z;
 }
 
 static double wrap(double angle)
 {
-  return fmod(360.0 + angle, 360.0); // force angle to be 0-360
+	return fmod(360.0 + angle, 360.0); // force angle to be 0-360
 }
 
 Eigen::Vector3d Camera::getVpr() const
@@ -166,36 +181,161 @@ Eigen::Vector3d Camera::getVpr() const
 
 void Camera::setVpr(double x, double y, double z)
 {
-  object_rot << wrap(90 - x), wrap(-y), wrap(-z);
+	object_rot << wrap(90 - x), wrap(-y), wrap(-z);
 }
 
 void Camera::setVpd(double d)
 {
-  viewer_distance = d;
+	viewer_distance = d;
 }
 
 double Camera::zoomValue() const
 {
-  return viewer_distance;
+	return viewer_distance;
 }
 
 void Camera::setVpf(double f)
 {
-  fov = f;
+	fov = f;
 }
 
 double Camera::fovValue() const
 {
-  return fov;
+	return fov;
 }
 
 std::string Camera::statusText() const
 {
-  const auto vpt = getVpt();
-  const auto vpr = getVpr();
-  boost::format fmt(_("Viewport: translate = [ %.2f %.2f %.2f ], rotate = [ %.2f %.2f %.2f ], distance = %.2f, fov = %.2f"));
-  fmt % vpt.x() % vpt.y() % vpt.z()
-  % vpr.x() % vpr.y() % vpr.z()
-  % viewer_distance % fov;
-  return fmt.str();
+	const auto vpt = getVpt();
+	const auto vpr = getVpr();
+	boost::format fmt(_("Viewport: translate = [ %.2f %.2f %.2f ], rotate = [ %.2f %.2f %.2f ], distance = %.2f, fov = %.2f"));
+	fmt % vpt.x() % vpt.y() % vpt.z()
+		% vpr.x() % vpr.y() % vpr.z()
+		% viewer_distance % fov;
+	return fmt.str();
+}
+
+Camera::Frustum Camera::getFrustum() const
+{
+	if (projection == ProjectionType::PERSPECTIVE) {
+		double aspectRatio = static_cast<double>(pixel_width) / static_cast<double>(pixel_height);
+		double tanfh = tan(deg2rad(fov) / 2.);
+		double half_near_height = near_ * tanfh;
+		return {-half_near_height * aspectRatio,
+						half_near_height * aspectRatio,
+						-half_near_height,
+						half_near_height,
+						near_,
+						far_};
+	}
+
+	return Camera::Frustum();
+}
+
+void Camera::SetPivotVisible(bool v)
+{
+	pivot_.first = v;
+}
+
+void Camera::SetPivot(Eigen::Vector3d const &p)
+{
+	pivot_.second = p;
+}
+
+const std::pair<bool, Eigen::Vector3d> &Camera::GetPivot() const
+{
+	return pivot_;
+}
+
+Eigen::Affine3d Camera::getViewMatrix() const
+{
+	/*
+		gluLookAt(0.0, -viewer_distance, 0.0, // eye
+						0.0, 0.0, 0.0,   // center
+						0.0, 0.0, 1.0);  // up
+
+	*/
+
+	/*
+		Eigen::Vector3d eye (0,-viewer_distance, 0);
+		Eigen::Vector3d center (0,0,0);
+		Eigen::Vector3d up (0,0,1);
+		Eigen::Vector3d forward = (center - eye).normalized();
+		Eigen::Vector3d side = forward.cross(up);
+		up = side.cross (forward);
+
+		Matrix3d rotation;
+		rotation << side(0), side(1), side(2), up(0), up(1), up(2), -forward(0), -forward(1),
+		-forward(2);
+
+		Eigen::Affine3d viewAffine;
+		viewAffine.linear() = rotation;
+
+		viewAffine.translate(-eye);
+	*/
+	Eigen::Affine3d viewAffine;
+	viewAffine.matrix() << 1.000, 0.000, 0.000, 0.000, 0.000, 0.000, 1.000, 0, 0.000, -1.000, 0.000,
+			-viewer_distance, 0, 0, 0, 1;
+	return viewAffine;
+}
+
+Eigen::Affine3d Camera::getModelMatrix() const
+{
+	Eigen::Affine3d rx =
+			Eigen::Affine3d(Eigen::AngleAxisd(deg2rad(object_rot.x()), Eigen::Vector3d::UnitX()));
+	Eigen::Affine3d ry =
+			Eigen::Affine3d(Eigen::AngleAxisd(deg2rad(object_rot.y()), Eigen::Vector3d::UnitY()));
+	Eigen::Affine3d rz =
+			Eigen::Affine3d(Eigen::AngleAxisd(deg2rad(object_rot.z()), Eigen::Vector3d::UnitZ()));
+
+	Eigen::Affine3d t = Eigen::Affine3d(Eigen::Translation3d(object_trans));
+
+	return rx * ry * rz * t;
+}
+
+Eigen::Affine3d Camera::getAffine() const
+{
+	Eigen::Affine3d viewAffine = getViewMatrix();
+	Eigen::Affine3d modelAffine = getModelMatrix();
+	return (viewAffine * modelAffine).inverse();
+}
+
+bool Camera::setAffine(const Eigen::Matrix4d &m)
+{
+	Eigen::Affine3d affine;
+	affine.matrix() = m;
+	// Remember for matrices Inverse(A*B) =Inverse(B)*Inverse(A);
+	// i.e.
+	// affine = getModelMatrix().inverse() * getViewMatrix().Inverse();
+	Eigen::Affine3d invmx = affine * getViewMatrix();
+
+	// back to euler
+	// see: http://eecs.qmul.ac.uk/~gslabaugh/publications/euler.pdf
+	double theta, psi, phi;
+	if (abs(invmx(2, 0)) != 1) {
+		theta = -asin_degrees(invmx(2, 0));
+		psi = atan2_degrees(invmx(2, 1) / cos_degrees(theta), invmx(2, 2) / cos_degrees(theta));
+		phi = atan2_degrees(invmx(1, 0) / cos_degrees(theta), invmx(0, 0) / cos_degrees(theta));
+	} else {
+		phi = 0;
+		if (invmx(2, 0) == -1) {
+			theta = 90;
+			psi = phi + atan2_degrees(invmx(0, 1), invmx(0, 2));
+		} else {
+			theta = -90;
+			psi = -phi + atan2_degrees(-invmx(0, 1), -invmx(0, 2));
+		}
+	}
+
+	object_rot.x() = -psi;
+	object_rot.y() = -theta;
+	object_rot.z() = -phi;
+
+	normalizeAngle(object_rot.x());
+	normalizeAngle(object_rot.y());
+	normalizeAngle(object_rot.z());
+
+	object_trans = {-invmx(0, 3), -invmx(1, 3), -invmx(2, 3)};
+
+	return true;
 }

@@ -1,6 +1,6 @@
 /*
  *  OpenSCAD (www.openscad.org)
- *  Copyright (C) 2009-2011 Clifford Wolf <clifford@clifford.at> and
+ *  Copyright (C) 2009-2015 Clifford Wolf <clifford@clifford.at> and
  *                          Marius Kintel <marius@kintel.net>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -23,27 +23,40 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-//
-// Trigonometry function taking degrees, accurate for 30, 45, 60 and 90, etc.
-//
 #pragma once
-#include "linalg.h"
 
-constexpr double M_SQRT3 = 1.73205080756887719318;    /* sqrt(3)   */
-constexpr double M_SQRT3_4 = 0.86602540378443859659;  /* sqrt(3/4) == sqrt(3)/2 */
-constexpr double M_SQRT1_3 = 0.57735026918962573106;  /* sqrt(1/3) == sqrt(3)/3 */
-constexpr double M_RAD2DEG = 57.2957795130823208767;  /* 180/PI */
-constexpr double M_DEG2RAD = 0.017453292519943295769; /* PI/180 */
+#include <unordered_map>
+#include <memory>
+#include <vector>
+#include <string>
+#include "src/input/3DMouseInput.h"
 
-double sin_degrees(double x);
-double cos_degrees(double x);
-double tan_degrees(double x);
-double asin_degrees(double x);
-double acos_degrees(double x);
-double atan_degrees(double x);
-double atan2_degrees(double y, double x);
+class MainWindow;
+class QAction;
 
-Matrix3d angle_axis_degrees(double a, Vector3d v);
-Matrix3d rotate_degrees(double angle);
+class QActionCommand
+{
+public:
+	explicit QActionCommand(QAction *, std::string const &rpath);
 
-void normalizeAngle(double& angle);
+	TDx::CImage GetCImage() const;
+	bool HasImage() const;
+	std::string Text() const;
+	std::string ToolTips() const;
+	std::string Description() const;
+	TDx::SpaceMouse::CCommand MakeCommand() const;
+	void Run();
+	const QAction *Action() const { return qaction_; }
+
+private:
+	QAction *qaction_;
+	std::string rpath_;
+};
+
+struct QActionsHandler {
+	MainWindow *win_;
+	std::vector<std::shared_ptr<QActionCommand>> cmds_;
+	std::unordered_map<std::string, std::shared_ptr<QActionCommand>> idToAction_;
+	void ExportApplicationCmds(TDx::SpaceMouse::Navigation3D::CNavigation3D *nav);
+	void SetActiveCmd(std::string const &);
+};
