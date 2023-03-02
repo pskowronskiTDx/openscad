@@ -33,7 +33,7 @@ project(OpenSCAD
 )
 
 option(INFO "Display build configuration info at end of cmake config" ON)
-option(ENABLE_TESTS "Run testsuite after building." ON)
+option(ENABLE_TESTS "Run testsuite after building." OFF)
 option(EXPERIMENTAL "Enable Experimental Features" OFF)
 option(SNAPSHOT "Create dev snapshot, uses nightly icons" OFF)
 option(HEADLESS "Build without GUI frontend" OFF)
@@ -47,7 +47,7 @@ option(OFFLINE_DOCS "Download Documentation for offline usage" OFF)
 option(USE_MIMALLOC "Use mimalloc as malloc replacement." ON)
 option(USE_CCACHE "Use ccache to speed up compilation." ON)
 option(ENABLE_CAIRO "Enable support for cairo vector graphics library." ON)
-option(ENABLE_SPNAV "Enable support for libspnav input driver." ON)
+option(ENABLE_SPNAV "Enable support for libspnav input driver." OFF)
 option(ENABLE_HIDAPI "Enable support for HIDAPI input driver." ON)
 option(ALLOW_BUNDLED_HIDAPI "Allow usage of bundled HIDAPI library (Windows only)." OFF)
 include(CMakeDependentOption)
@@ -343,17 +343,31 @@ else()
   message(STATUS "HIDAPI: disabled per user request")
 endif()
 
-if(ENABLE_SPNAV)
-  find_package(SpNav QUIET)
-  if(SPNAV_FOUND)
-    message(STATUS "SpNav: found")
-    set(INPUT_DRIVER_SPNAV_SOURCES src/gui/input/SpaceNavInputDriver.cc)
-    target_include_directories(OpenSCAD SYSTEM PRIVATE ${SPNAV_INCLUDE_DIR})
-    target_link_libraries(OpenSCAD PRIVATE ${SPNAV_LIBRARY})
-    target_compile_definitions(OpenSCAD PRIVATE ENABLE_SPNAV)
-  else()
-    message(STATUS "SpNav: disabled")
+### 3DConnexion mouses integration.
+####  See https://3dconnexion.com/fr/drivers/ for a compatibility overview
+option(ENABLE_3DCONNEXION_NAVLIB "Enable 3DConnexion space mouse integration." ON)
+if( WIN32 OR APPLE )
+  if(ENABLE_3DCONNEXION_NAVLIB)
+    if("" STREQUAL $ENV{TDxWare_SDK_DIR} )
+      message(warning "TDxWare_SDK_DIR environment variable should point to the directory where 3DConnexion driver has been installed.")
+    endif()
+    find_package(TDxWare_SDK 4.0 QUIET COMPONENTS 3DxWare::)
+    if(TDxWare_SDK_FOUND)
+      message(STATUS "TDxWare_SDK: ${TDxWare_SDK_VERSION}")
+      include_directories($<TARGET_PROPERTY:3DxWare::Navlib,INTERFACE_INCLUDE_DIRECTORIES>)
+      list(APPEND COMMON_LIBRARIES $<TARGET_PROPERTY:3DxWare::Navlib,INTERFACE_LINK_LIBRARIES>)
+      set(3DCONNEXION_NAVLIB_SOURCES src/input/3DMouseInput.cc src/input/3DMousePivot.cc) 
+      set(3DCONNEXION_NAVLIB_GUI_SOURCES src/input/3DMouseCmd.cc) 
+	    set(OPENGL_UTILS_SOURCE src/platform/OpenGlUtils.cc)
+      add_definitions(-DENABLE_SPACEMOUSEPRO)
+	  target_link_libraries(OpenSCAD PRIVATE $<TARGET_PROPERTY:3DxWare::Navlib,INTERFACE_LINK_LIBRARIES>)
+    else()
+      message(STATUS "TDxWare_SDK: disabled")
+    endif()
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/3dx_pivot.png DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/icons)
   endif()
+elseif(LINUX)
+  message(warning "Navlib is not supported on linux")
 endif()
 
 if(ENABLE_CAIRO)
@@ -379,13 +393,13 @@ message(STATUS "Bison: ${BISON_VERSION}")
 if(NOT MSVC)
   find_package(Lib3MF QUIET)
   if (LIB3MF_FOUND)
-    message(STATUS "lib3mf: ${LIB3MF_VERSION}")
+  message(STATUS "lib3mf: ${LIB3MF_VERSION}")
     target_compile_definitions(OpenSCAD PRIVATE ${LIB3MF_DEFINITIONS})
     target_include_directories(OpenSCAD SYSTEM PRIVATE ${LIB3MF_INCLUDE_DIRS})
     target_link_libraries(OpenSCAD PRIVATE ${LIB3MF_LIBRARIES})
   else()
     message(STATUS "lib3mf: disabled")
-  endif()
+endif()
 endif()
 
 # Automatically add the current source and build directories to the include path.
@@ -538,11 +552,11 @@ elseif(UNIX)
       target_link_libraries(OpenSCAD PRIVATE OpenGL::EGL)
     else()
       set(OFFSCREEN_METHOD "Unix GLX on X11")
-      message(STATUS "Offscreen OpenGL Context - using Unix GLX on X11")
+  message(STATUS "Offscreen OpenGL Context - using Unix GLX on X11")
       set(PLATFORM_SOURCES ${PLATFORM_SOURCES} src/glview/OffscreenContextGLX.cc)
-      find_library(X11_LIBRARY X11)
+    find_library(X11_LIBRARY X11)
       target_link_libraries(OpenSCAD PRIVATE ${X11_LIBRARY})
-    endif()
+  endif()
   endif()
 elseif(WIN32)
   target_compile_definitions(OpenSCAD PRIVATE NOGDI)
@@ -694,7 +708,11 @@ set(CORE_SOURCES
   ${FLEX_openscad_lexer_OUTPUTS}
   ${BISON_openscad_parser_OUTPUTS}
   ${FLEX_comment_lexer_OUTPUTS}
-  ${BISON_comment_parser_OUTPUTS})
+  ${BISON_comment_parser_OUTPUTS}
+  ${3DCONNEXION_NAVLIB_SOURCES}
+  ${3DCONNEXION_NAVLIB_GUI_SOURCES}
+  ${OPENGL_UTILS_SOURCE}
+  )
 
 set(CGAL_SOURCES
   src/geometry/GeometryEvaluator.cc
@@ -761,7 +779,6 @@ endif()
 set(INPUT_DRIVER_SOURCES
   ${PLATFORM_INPUT_DRIVER_SOURCES}
   ${INPUT_DRIVER_HIDAPI_SOURCES}
-  ${INPUT_DRIVER_SPNAV_SOURCES}
   ${INPUT_DRIVER_DBUS_SOURCES})
 
 set(GUI_SOURCES
@@ -871,6 +888,11 @@ add_custom_command(TARGET OpenSCAD POST_BUILD
     ARGS "${CMAKE_CURRENT_LIST_DIR}/scripts/translation-make.sh" "${SUFFIX_WITH_DASH}"
     COMMENT "Compiling language files")
 
+
+if(ENABLE_3DCONNEXION_NAVLIB)
+  target_compile_definitions(OpenSCAD PRIVATE ENABLE_SPACEMOUSEPRO=1)
+endif()
+
 if(APPLE AND NOT APPLE_UNIX)
   set_target_properties(OpenSCAD PROPERTIES
     MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/Info.plist.in
@@ -936,8 +958,8 @@ if(NOT APPLE OR APPLE_UNIX)
       install(FILES ${CMAKE_BINARY_DIR}/submodules/mimalloc/mimalloc.dll DESTINATION ".")
     endif()
   else()
-    install(FILES ${CMAKE_CURRENT_LIST_DIR}/doc/openscad.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1 RENAME openscad${SUFFIX_WITH_DASH}.1)
-    install(FILES ${CMAKE_CURRENT_LIST_DIR}/openscad.appdata.xml DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo RENAME org.openscad.OpenSCAD${SUFFIX_WITH_DASH}.appdata.xml)
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/doc/openscad.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1 RENAME openscad${SUFFIX_WITH_DASH}.1)
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/openscad.appdata.xml DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo RENAME org.openscad.OpenSCAD${SUFFIX_WITH_DASH}.appdata.xml)
     install(FILES ${RESOURCE_DIR}/icons/openscad.desktop DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications RENAME openscad${SUFFIX_WITH_DASH}.desktop)
     install(FILES ${RESOURCE_DIR}/icons/openscad.xml DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/mime/packages RENAME openscad${SUFFIX_WITH_DASH}.xml)
     install(FILES ${RESOURCE_DIR}/icons/openscad${SNAPSHOT_SUFFIX}-48.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/48x48/apps RENAME openscad${SNAPSHOT_SUFFIX}.png)
@@ -945,7 +967,7 @@ if(NOT APPLE OR APPLE_UNIX)
     install(FILES ${RESOURCE_DIR}/icons/openscad${SNAPSHOT_SUFFIX}-128.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/128x128/apps RENAME openscad${SNAPSHOT_SUFFIX}.png)
     install(FILES ${RESOURCE_DIR}/icons/openscad${SNAPSHOT_SUFFIX}-256.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps RENAME openscad${SNAPSHOT_SUFFIX}.png)
     install(FILES ${RESOURCE_DIR}/icons/openscad${SNAPSHOT_SUFFIX}-512.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/512x512/apps RENAME openscad${SNAPSHOT_SUFFIX}.png)
-  endif()
+endif()
   install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/color-schemes DESTINATION "${OPENSCAD_INSTALL_RESOURCEDIR}")
   install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/examples DESTINATION "${OPENSCAD_INSTALL_RESOURCEDIR}")
   install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/fonts DESTINATION "${OPENSCAD_INSTALL_RESOURCEDIR}" PATTERN ".uuid" EXCLUDE)
@@ -968,7 +990,7 @@ if(MXECROSS)
     set(CPACK_NSIS_IGNORE_LICENSE_PAGE ON)
   else()
     message(FATAL_ERROR "CPACK_NSIS_IGNORE_LICENSE_PAGE requires cmake 3.22")
-  endif()
+endif()
   set(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS "\
     !include \\\"FileFunc.nsh\\\"\n\
     !include \\\"${CMAKE_SOURCE_DIR}/scripts/mingw-file-association.nsh\\\"\

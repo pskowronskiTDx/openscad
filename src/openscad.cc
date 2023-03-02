@@ -50,7 +50,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
-
+#include <filesystem>
 #ifdef ENABLE_CGAL
 
 #include "CGAL_Nef_polyhedron.h"

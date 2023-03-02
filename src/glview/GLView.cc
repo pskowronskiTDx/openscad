@@ -7,6 +7,7 @@
 #include "degree_trig.h"
 #include <cmath>
 #include <cstdio>
+#include <QtCore/QCoreApplication>
 #ifdef _WIN32
 #include <GL/wglew.h>
 #elif !defined(__APPLE__)
@@ -160,10 +161,7 @@ void GLView::paintGL()
   if (showaxes) GLView::showAxes(axescolor);
   // mark the scale along the axis lines
   if (showaxes && showscale) GLView::showScalemarkers(axescolor);
-  const auto & pivot = cam.GetPivot();
-  if(pivot.first){
-	  drawPivot(pivot.second);
-  }
+  
   glEnable(GL_LIGHTING);
   glDepthFunc(GL_LESS);
   glCullFace(GL_BACK);
@@ -180,8 +178,14 @@ void GLView::paintGL()
     this->renderer->draw(showfaces, showedges);
   }
 
+  const auto & pivot = cam.GetPivot();
+  if(pivot.first){
+	  drawPivot(pivot.second);
+  }
+
   glDisable(GL_LIGHTING);
   if (showaxes) GLView::showSmallaxes(axescolor);
+
 }
 
 #ifdef ENABLE_OPENCSG
@@ -767,40 +771,26 @@ void GLView::decodeMarkerValue(double i, double l, int size_div_sm)
 	}
 }
 
-void drawRaster(Eigen::Vector3d const &p, std::array<unsigned int, 3> rgbCol, size_t sz )
-{
-	glPushMatrix();
-	glPushAttrib(GL_ENABLE_BIT);
-	glClearColor(0, 0, 0, 1.0);
-	glPixelZoom(-1, 1);
-	unsigned int color[sz][sz][3];
-	for (size_t i = 0; i < sz; i++){
-		for (size_t j = 0; j < sz; j++)
-		{
-			color[i][j][0] = rgbCol[0];
-			color[i][j][1] = rgbCol[1];
-			color[i][j][2] = rgbCol[2];
-		}
-	}
-	glRasterPos3d(p.x(), p.y(), p.z());
-	glDrawPixels( sz, sz, GL_RGB, GL_UNSIGNED_INT, color );
-	glPopAttrib();
-	glPopMatrix();
-}
-
 void GLView::drawPivot(Eigen::Vector3d const& p){
+  
+  QString pivotImage = QCoreApplication::applicationDirPath();
+  pivotImage.append("/resources/icons/3dx_pivot.png");
+  QImage img(pivotImage);
+  
 	// Draw the pivot
+  glDisable(GL_DEPTH_TEST);
 	glPushMatrix();
 	glRasterPos3d(p.x(), p.y(), p.z());
-	QImage img("resources/icons/s3dm_pivot.bmp");
+  glPixelZoom(1.0f, -1.0f);
+    glBitmap(0.0f, 
+			 0.0f, 
+			 0.0f,
+			 0.0f, 
+			 -static_cast<float>(img.width() >> 1),
+			 static_cast<float>(img.height() >> 1), 
+			 NULL);
+	
 	glDrawPixels(img.width(), img.height(), GL_BGRA_EXT, GL_UNSIGNED_BYTE, img.bits());
-	glPixelZoom(-1, 1);
 	glPopMatrix();	
-
-	//end
-	std::array<unsigned int, 3> black=  {0,0,0};
-	std::array<unsigned int, 3> red=  {255,0,0};
-
-	drawRaster(p,black,20);
-	drawRaster(cam.hitLookAt_,red,40);
+  glEnable(GL_DEPTH_TEST);
 }
