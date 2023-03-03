@@ -16,6 +16,8 @@ QGLView only uses GimbalCamera while OffscreenView can use either one.
 Some actions (showCrossHairs) only work properly on Gimbal Camera.
 
 */
+#include <QImage>
+#include <QString>
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -23,6 +25,7 @@ Some actions (showCrossHairs) only work properly on Gimbal Camera.
 #include <iostream>
 #include "Camera.h"
 #include "ColorMap.h"
+
 
 class GLView
 {
@@ -58,7 +61,12 @@ public:
 	virtual float getDPI() { return 1.0f; }
 
   virtual ~GLView() = default;
-
+  void setPivotPosition(const Eigen::Vector3d &position);
+  void setPivotIcon(const QString &iconPath);
+  void setPivotVisibility(bool isVisible);
+  bool getPivotVisibility() const;
+  Eigen::Vector3d getPivotPosition() const;
+  
 	Renderer *renderer;
 	const ColorScheme *colorscheme;
 	Camera cam;
@@ -79,10 +87,16 @@ public:
 	int opencsg_id;
 #endif
 private:
+  struct {
+	Eigen::Vector3d position{0};
+	bool isVisible = false;
+	QImage icon;
+  } pivot;
+
   void showCrosshairs(const Color4f& col);
   void showAxes(const Color4f& col);
   void showSmallaxes(const Color4f& col);
   void showScalemarkers(const Color4f& col);
   void decodeMarkerValue(double i, double l, int size_div_sm);
-  void drawPivot(Eigen::Vector3d const& p);
+  void drawPivot();
 };

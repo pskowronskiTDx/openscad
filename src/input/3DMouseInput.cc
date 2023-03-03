@@ -23,31 +23,24 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
+#include <QtCore/QCoreApplication>
 #include "3DMouseInput.h"
+#include "QGLView.h"
 
 #include <algorithm>
 
 constexpr double MIN_ZOOM = 1 ;
 constexpr std::size_t MATRIX_SIZE = 16 * sizeof(double);
 
-TDMouseInput::TDMouseInput(std::function<Camera*()> camProvider, std::function<BoundingBox()> bbProvider,
-std::function<void(Eigen::Matrix4d const&)> applyAffine,
-std::function<void(const Renderer::shaderinfo_t *)> drawer, std::function<void(const Renderer::shaderinfo_t *)> prepareDraw,
-std::function<Eigen::Vector2d()> mousePosProvider, bool multiThreaded, bool rowMajor)
+TDMouseInput::TDMouseInput(QGLView *pQGLView_ , bool multiThreaded, bool rowMajor) 
 	: TDx::SpaceMouse::Navigation3D::CNavigation3D(multiThreaded, rowMajor)
-	, isOpen_(false)
-	, isRowMajor_(rowMajor)
-	, motionFlags_(false)
 	, m_cv_m_(std::make_shared<std::mutex>())
 	, m_cv_(std::make_shared<std::condition_variable>())
-	, pivotPosition_({0,0,0})
-	, drawerProvider_(drawer)
-	, prepareDraw_(prepareDraw)
-	, cameraProvider_(camProvider)
-	, boundingBoxProvider_(bbProvider)
-	, applyAffine_(applyAffine)
-	, mousePosProvider_(mousePosProvider)
+	, pQGLView(pQGLView_) 
 {
+  	QString pivotIconPath = QCoreApplication::applicationDirPath();
+  	pivotIconPath.append("/resources/icons/3dx_pivot.png");
+  	pQGLView->setPivotIcon(pivotIconPath);
 }
 
 TDMouseInput::~TDMouseInput()
@@ -74,7 +67,6 @@ bool TDMouseInput::Open3DxWare()
 	{
 		return false;
 	}
-	isOpen_ = true;
 	return true;
 }
 
@@ -92,36 +84,36 @@ long TDMouseInput::GetCoordinateSystem(navlib::matrix_t &matrix) const
 
 long TDMouseInput::GetCameraMatrix(navlib::matrix_t &affine) const
 {
-	std::memcpy(&affine.m00,  cameraProvider_()->getAffine().data(), MATRIX_SIZE);
+	std::memcpy(&affine.m00,  pQGLView->cam.getAffine().data(), MATRIX_SIZE);
 	return 0;
 }
 
 long TDMouseInput::SetCameraMatrix(const navlib::matrix_t &affine)
 {
-	applyAffine_(Eigen::Matrix4d(&affine.m00));
+	pQGLView->applyAffine(Eigen::Matrix4d(&affine.m00));
 	return 0;
 }
 
 long TDMouseInput::GetIsViewPerspective(navlib::bool_t &p) const
 {
-	p = cameraProvider_()->GetProjection() == Camera::ProjectionType::PERSPECTIVE;
+	p = pQGLView->cam.GetProjection() == Camera::ProjectionType::PERSPECTIVE;
 	return 0;
 }
 
 long TDMouseInput::GetViewFOV(double &fov) const
 {
-	fov =deg2rad(cameraProvider_()->fovValue());
+	fov =deg2rad(pQGLView->cam.fovValue());
 	return 0;
 }
 long TDMouseInput::SetViewFOV(double fov)
 {
-	cameraProvider_()->setVpf(rad2deg(fov));
+	pQGLView->cam.setVpf(rad2deg(fov));
 	return 0;
 }
 
 long TDMouseInput::GetModelExtents(navlib::box_t &nav_box) const
 {
-	BoundingBox box = boundingBoxProvider_();
+	BoundingBox box = pQGLView->renderer->getBoundingBox();
 	if(box.isEmpty() || box.isNull()){
 		return navlib::make_result_code(navlib::navlib_errc::no_data_available);
 	}
@@ -133,7 +125,7 @@ long TDMouseInput::GetModelExtents(navlib::box_t &nav_box) const
 
 long TDMouseInput::GetViewExtents(navlib::box_t &bounding_box) const
 {
-	auto & cam = *cameraProvider_();
+	auto & cam = pQGLView->cam;
 
 	double aspectratio = static_cast<double>(cam.pixel_width) / static_cast<double>(cam.pixel_height);
 
@@ -148,7 +140,7 @@ long TDMouseInput::GetViewExtents(navlib::box_t &bounding_box) const
 
 long TDMouseInput::SetViewExtents(const navlib::box_t &bounding_box)
 {
-	auto &cam = *cameraProvider_();
+	auto &cam = pQGLView->cam;
 
 	double dist = cam.zoomValue();
 
@@ -163,7 +155,7 @@ long TDMouseInput::SetViewExtents(const navlib::box_t &bounding_box)
 
 long TDMouseInput::GetViewFrustum(navlib::frustum_t &f) const
 {
-	auto &cam = *cameraProvider_();
+	auto &cam = pQGLView->cam;
 
 	if (cam.projection == Camera::ProjectionType::PERSPECTIVE) {
 		// view perspective

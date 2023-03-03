@@ -398,9 +398,7 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 }
 
 
-Eigen::Vector3d GetCursorWorldCoordinates( Camera const &cam,
-											 std::function<void(const Renderer::shaderinfo_t *)> prepareDrawer,
-											 std::function<void(const Renderer::shaderinfo_t *)> drawe, Eigen::Vector2d const& mousePos){
+Eigen::Vector3d GetCursorWorldCoordinates( Camera const &cam, Eigen::Vector2d const& mousePos) {
 	GLint viewport[4];
 	glGetIntegerv(GL_VIEWPORT, viewport);
 

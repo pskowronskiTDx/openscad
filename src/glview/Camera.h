@@ -77,10 +77,6 @@ public:
 	bool locked;
 
 	Camera::Frustum getFrustum() const;
-	void SetPivotVisible(bool);
-	void SetPivot(Eigen::Vector3d const &);
-	const std::pair<bool, Eigen::Vector3d> &GetPivot() const;
-
 	Eigen::Affine3d getViewMatrix() const;
 	Eigen::Affine3d getModelMatrix() const;
 	Eigen::Affine3d getAffine() const;
@@ -89,8 +85,6 @@ public:
 private:
 	double near_ = 0.1;
 	double far_ = 1000.;
-	// pivot enabled and its position
-	std::pair<bool, Eigen::Vector3d> pivot_;
 
 protected:
 	// Perspective settings

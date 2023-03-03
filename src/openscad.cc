@@ -831,46 +831,18 @@ int gui(vector<string>& inputFiles, const fs::path& original_path, int argc, cha
 	}
 #endif
 #ifdef ENABLE_SPACEMOUSEPRO
-	// for test purpose .. code is too much coupled
-	std::function<Camera*()> camProvider =  [win]{return &win->qglview->cam;};
-	std::function<BoundingBox()> boundingBoxProvider = [win] {
-		auto r = win->qglview->renderer;
-		if (r) {
-			return r->getBoundingBox();
-		}
-		return BoundingBox(3);
-	};
-	std::function<void(const Renderer::shaderinfo_t *shaderInfo)> prepareDrawer =[win](const Renderer::shaderinfo_t *shaderInfo){
-		auto r = win->qglview->getRenderer();
-		if(r){
-    		r->prepare(true, false, shaderInfo);
-		}
-	};
-	std::function<Eigen::Vector2d()> mousePosProvider = [win]{
-		QPoint pos = QCursor::pos();
-		pos = win->qglview->mapFromGlobal(pos);
-		return Eigen::Vector2d({pos.x(),pos.y()});
-	};
-	std::function<void(const Renderer::shaderinfo_t *shaderInfo)> drawer =[win](const Renderer::shaderinfo_t *shaderInfo){
-		auto r = win->qglview->getRenderer();
-		if(r){
-    		r->draw(true, false, shaderInfo);
-		}
-	};
-	std::function<void(Eigen::Matrix4d const&)> applyAffine = [win](Eigen::Matrix4d const& affine){win->qglview->applyAffine(affine);};
-	TDMouseInput* SpaceMouse = nullptr;
-	SpaceMouse=new TDMouseInput(camProvider, boundingBoxProvider, applyAffine, drawer,prepareDrawer, mousePosProvider);
-	std::shared_ptr<std::thread> tContainer_= std::make_shared<std::thread>(&TDMouseInput::Run, *SpaceMouse);
+	TDMouseInput *SpaceMouse = new TDMouseInput(win->qglview);
+	//std::shared_ptr<std::thread> tContainer_= std::make_shared<std::thread>(&TDMouseInput::Run, *SpaceMouse);
 	SpaceMouse->Open3DxWare();
 	QActionsHandler cmdHandler;
 	cmdHandler.win_=win;
 	cmdHandler.ExportApplicationCmds(SpaceMouse);
 	SpaceMouse->SetCommandHandler([&cmdHandler](std::string s){cmdHandler.SetActiveCmd(s);});
-	tContainer_->detach();
+	//tContainer_->detach(); 
 #endif
 	InputDriverManager::instance()->init();
 	int rc = app.exec();
-  const auto& windows = scadApp->windowManager.getWindows();
+    const auto& windows = scadApp->windowManager.getWindows();
 	while (!windows.empty()) delete *windows.begin();
 	return rc;
 }

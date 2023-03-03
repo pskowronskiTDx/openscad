@@ -25,6 +25,7 @@
  */
 #include "3DMouseInput.h"
 #include "OpenGlUtils.h"
+#include "QGLView.h"
 
 Eigen::Vector3d TransformVGet(Eigen::Vector3d const &p, Eigen::Matrix4d const& transformation)
 {
@@ -39,7 +40,7 @@ Eigen::Vector3d TransformVSet(Eigen::Vector3d const &p, Eigen::Matrix4d const& t
 
 long TDMouseInput::GetPivotPosition(navlib::point_t &p) const
 {	
-	std::memcpy(&p.x, pivotPosition_.data(), sizeof(double) * pivotPosition_.size());
+	std::memcpy(&p.x, pQGLView->getPivotPosition().data(), sizeof(double) * 3u);
 	return 0;
 }
 
@@ -51,21 +52,37 @@ long TDMouseInput::IsUserPivot(navlib::bool_t &p) const
 
 long TDMouseInput::SetPivotPosition(const navlib::point_t &p)
 {
-	std::memcpy(pivotPosition_.data(), &p.x, sizeof(double) * pivotPosition_.size());
-	cameraProvider_()->SetPivot(pivotPosition_);
+	pQGLView->setPivotPosition({p.x, p.y, p.z});
 	return 0;
 }
 
 long TDMouseInput::GetHitLookAt(navlib::point_t &p) const
 {
 	double diameter = hitAperture_;
-	const auto &frustum = cameraProvider_()->getFrustum();
-	double distance = GetZBufferDepth(hitLookFrom_, hitDirection_, hitAperture_, *cameraProvider_(),
-																		prepareDraw_, drawerProvider_);
+	const auto &frustum = pQGLView->cam.getFrustum();
+
+	auto pCopy = pQGLView;
+
+	std::function<void(const Renderer::shaderinfo_t *shaderInfo)> prepareDrawer =[pCopy](const Renderer::shaderinfo_t *shaderInfo){
+	auto r = pCopy->getRenderer();
+	if(r){
+    	r->prepare(true, false, shaderInfo);
+	 }
+	};
+
+	std::function<void(const Renderer::shaderinfo_t *shaderInfo)> drawer =[pCopy](const Renderer::shaderinfo_t *shaderInfo){
+	auto r = pCopy->getRenderer();
+	if(r){
+    	r->draw(true, false, shaderInfo);
+	 }
+	};
+
+	double distance = GetZBufferDepth(hitLookFrom_, hitDirection_, hitAperture_, pQGLView->cam,
+																		prepareDrawer, drawer);
 	if (distance < frustum.farVal - 0.00005) {
 		auto hitlookat = (hitLookFrom_ + hitDirection_ * distance).eval();
 		//only for drawing should be removed
-		cameraProvider_()->hitLookAt_=hitlookat;
+		pQGLView->cam.hitLookAt_=hitlookat;
 		std::memcpy(&p.x, hitlookat.data(),hitlookat.size()*sizeof(double));
 		return 0;
 	}
@@ -96,24 +113,28 @@ long TDMouseInput::SetHitLookFrom(const navlib::point_t &hitLookFrom)
 {
 	std::memcpy(hitLookFrom_.data(), &hitLookFrom.x, sizeof(double) * hitLookFrom_.size());
 	//only for drawing should be removed
-	cameraProvider_()->hitLookFrom_=hitLookFrom_;
+	pQGLView->cam.hitLookFrom_=hitLookFrom_;
 	return 0;
 }
 
 long TDMouseInput::GetPivotVisible(navlib::bool_t &v) const
 {
-	v = cameraProvider_()->GetPivot().first;
+	v = pQGLView->getPivotVisibility();
 	return 0;
 }
 long TDMouseInput::SetPivotVisible(bool v)
 {
-	cameraProvider_()->SetPivotVisible(v);
+	pQGLView->setPivotVisibility(v);
 	return 0;
 }
 
 // ptr
 long TDMouseInput::GetPointerPosition(navlib::point_t & p) const{
-	auto mousePos = GetCursorWorldCoordinates(*cameraProvider_(), prepareDraw_, drawerProvider_,mousePosProvider_());
+
+	QPoint pos = QCursor::pos();
+	pos = pQGLView->mapFromGlobal(pos);
+
+	auto mousePos = GetCursorWorldCoordinates(pQGLView->cam, Eigen::Vector2d({pos.x(),pos.y()}));
 	std::cout << mousePos.transpose() << std::endl;
 	std::memcpy(&p.x,mousePos.data(), mousePos.size()*sizeof(double));
 	return 0;

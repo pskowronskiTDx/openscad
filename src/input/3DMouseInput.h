@@ -48,39 +48,26 @@ static inline double deg2rad(double x)
 {
 	return x * M_DEG2RAD;
 }
+ 
+class QGLView;
 
 class TDMouseInput : public TDx::SpaceMouse::Navigation3D::CNavigation3D
 {
 private:
-	bool isOpen_ = false;
 	bool m_exit_ = false;
-	bool isRowMajor_;
-	bool motionFlags_;
 	std::shared_ptr<std::mutex> m_cv_m_;
 	std::shared_ptr<std::condition_variable> m_cv_;
 	// to run cmds (avoid coupling with gui)
 	std::function<void(std::string)> onActiveCommand_;
 	
-	// pivot
-	Eigen::Vector3d pivotPosition_;
 	Eigen::Vector3d hitDirection_;
 	Eigen::Vector3d hitLookFrom_;
 	double hitAperture_;
 	bool hitSelectionOnly_;
-	//to draw opengl shapes
-	std::function<void(const Renderer::shaderinfo_t *)> drawerProvider_;
-	std::function<void(const Renderer::shaderinfo_t *)> prepareDraw_;
-	// data providers, workarround to avoid code too much code coupling and be testable..
-	std::function<Camera *()> cameraProvider_;
-	std::function<BoundingBox()> boundingBoxProvider_;
-	std::function<void(Eigen::Matrix4d const&)> applyAffine_;
+	QGLView *pQGLView;
 
-	std::function<Eigen::Vector2d()> mousePosProvider_;
 public:
-	TDMouseInput(std::function<Camera *()> camProvider, std::function<BoundingBox()> bbProvider,
-							 std::function<void(Eigen::Matrix4d const&)> applyAffine,
-							 std::function<void(const Renderer::shaderinfo_t *)> drawer,  std::function<void(const Renderer::shaderinfo_t *)> prepareDraw, 
-							 std::function<Eigen::Vector2d()> mousePosProvider, bool multiThreaded = false, bool rowMajor = false);
+	TDMouseInput(QGLView *pQGLView_, bool multiThreaded = false, bool rowMajor = false);
 	~TDMouseInput();
 	void Run();
 	bool Open3DxWare();

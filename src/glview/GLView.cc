@@ -7,7 +7,7 @@
 #include "degree_trig.h"
 #include <cmath>
 #include <cstdio>
-#include <QtCore/QCoreApplication>
+
 #ifdef _WIN32
 #include <GL/wglew.h>
 #elif !defined(__APPLE__)
@@ -18,7 +18,7 @@
 #include <opencsg.h>
 #endif
 
-#include <QImage>
+
 GLView::GLView()
 {
   aspectratio = 1;
@@ -53,6 +53,31 @@ to match the colorscheme of this GLView.*/
 void GLView::updateColorScheme()
 {
   if (this->renderer) this->renderer->setColorScheme(*this->colorscheme);
+}
+
+void GLView::setPivotPosition(const Eigen::Vector3d &position)
+{
+  pivot.position = position;
+}
+
+void GLView::setPivotIcon(const QString &iconPath)
+{
+  pivot.icon.load(iconPath);
+}
+
+void GLView::setPivotVisibility(bool isVisible)
+{
+  pivot.isVisible = isVisible;
+}
+
+bool GLView::getPivotVisibility() const
+{
+  return pivot.isVisible;
+}
+
+Eigen::Vector3d GLView::getPivotPosition() const 
+{
+  return pivot.position;
 }
 
 /* change this GLView's colorscheme to the one given, and update the
@@ -178,9 +203,8 @@ void GLView::paintGL()
     this->renderer->draw(showfaces, showedges);
   }
 
-  const auto & pivot = cam.GetPivot();
-  if(pivot.first){
-	  drawPivot(pivot.second);
+  if(pivot.isVisible && !pivot.icon.isNull()){
+	  drawPivot();
   }
 
   glDisable(GL_LIGHTING);
@@ -771,26 +795,22 @@ void GLView::decodeMarkerValue(double i, double l, int size_div_sm)
 	}
 }
 
-void GLView::drawPivot(Eigen::Vector3d const& p){
-  
-  QString pivotImage = QCoreApplication::applicationDirPath();
-  pivotImage.append("/resources/icons/3dx_pivot.png");
-  QImage img(pivotImage);
-  
-	// Draw the pivot
+void GLView::drawPivot(){
+
   glDisable(GL_DEPTH_TEST);
 	glPushMatrix();
-	glRasterPos3d(p.x(), p.y(), p.z());
+	glRasterPos3d(pivot.position.x(), pivot.position.y(), pivot.position.z());
   glPixelZoom(1.0f, -1.0f);
     glBitmap(0.0f, 
 			 0.0f, 
 			 0.0f,
 			 0.0f, 
-			 -static_cast<float>(img.width() >> 1),
-			 static_cast<float>(img.height() >> 1), 
+			 -static_cast<float>(pivot.icon.width() >> 1),
+			 static_cast<float>(pivot.icon.height() >> 1), 
 			 NULL);
 	
-	glDrawPixels(img.width(), img.height(), GL_BGRA_EXT, GL_UNSIGNED_BYTE, img.bits());
+	glDrawPixels(pivot.icon.width(), pivot.icon.height(), GL_BGRA_EXT, GL_UNSIGNED_BYTE, pivot.icon.bits());
 	glPopMatrix();	
   glEnable(GL_DEPTH_TEST);
+
 }

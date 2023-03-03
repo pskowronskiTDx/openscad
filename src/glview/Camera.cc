@@ -232,21 +232,6 @@ Camera::Frustum Camera::getFrustum() const
 	return Camera::Frustum();
 }
 
-void Camera::SetPivotVisible(bool v)
-{
-	pivot_.first = v;
-}
-
-void Camera::SetPivot(Eigen::Vector3d const &p)
-{
-	pivot_.second = p;
-}
-
-const std::pair<bool, Eigen::Vector3d> &Camera::GetPivot() const
-{
-	return pivot_;
-}
-
 Eigen::Affine3d Camera::getViewMatrix() const
 {
 	/*
