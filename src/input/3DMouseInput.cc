@@ -125,31 +125,26 @@ long TDMouseInput::GetModelExtents(navlib::box_t &nav_box) const
 
 long TDMouseInput::GetViewExtents(navlib::box_t &bounding_box) const
 {
-	auto & cam = pQGLView->cam;
-
+	auto &cam = pQGLView->cam;
 	double aspectratio = static_cast<double>(cam.pixel_width) / static_cast<double>(cam.pixel_height);
-
 	double dist = cam.zoomValue();
+	double half_height = dist * tan_degrees(cam.fov / 2.0);
+	double half_width = half_height * aspectratio;
 
-	double half_height = dist * tan_degrees(cam.fov / 2);
+	dist *= 100.0;
 
-	bounding_box = {-half_height * aspectratio, -half_height, -100 * dist,
-					 half_height * aspectratio,  half_height,  100 * dist};
+	bounding_box = {-half_width, -half_height, -dist, half_width, half_height, dist};
+
 	return 0;
 }
 
 long TDMouseInput::SetViewExtents(const navlib::box_t &bounding_box)
 {
 	auto &cam = pQGLView->cam;
-
-	double dist = cam.zoomValue();
-
-	double aspectratio = static_cast<double>(cam.pixel_width) / static_cast<double>(cam.pixel_height);
-
-	double half_height = dist * tan_degrees(cam.fov / 2);
-
-	cam.zoom(dist * half_height / bounding_box.max.y, false);
-
+	double half_height = cam.zoomValue() * tan_degrees(cam.fov / 2.0);
+	
+	cam.scaleDistance(bounding_box.max.y / half_height);
+	
 	return 0;
 }
 

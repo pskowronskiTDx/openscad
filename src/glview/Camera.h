@@ -34,6 +34,7 @@ public:
 	void gimbalDefaultTranslate();
 	void setProjection(ProjectionType type);
 	void zoom(int delta, bool relative);
+	void scaleDistance(double scale);
   [[nodiscard]] double zoomValue() const;
   [[nodiscard]] double fovValue() const;
 	void resetView();

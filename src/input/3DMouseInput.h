@@ -75,32 +75,16 @@ public:
 
 	long GetCoordinateSystem(navlib::matrix_t &matrix) const override;
 	long GetCameraMatrix(navlib::matrix_t &) const override;
-	long SetCameraMatrix(const navlib::matrix_t &) override;
 	long GetIsViewPerspective(navlib::bool_t &) const override;
 	long GetViewFOV(double &) const override;
-	long SetViewFOV(double) override;
 	long GetModelExtents(navlib::box_t &) const override;
 	long GetViewExtents(navlib::box_t &) const override;
-	long SetViewExtents(const navlib::box_t &) override;
-	long GetViewFrustum(navlib::frustum_t &) const override;
-	long SetViewFrustum(const navlib::frustum_t &) override;
+    long GetViewFrustum(navlib::frustum_t &) const override;
 	long GetFrontView(navlib::matrix_t &)const override;
-
 	long GetIsSelectionEmpty(navlib::bool_t &s) const;
 	long GetPivotPosition(navlib::point_t &) const override;
-	long IsUserPivot(navlib::bool_t &) const override;
-	long SetPivotPosition(const navlib::point_t &) override;
 	long GetHitLookAt(navlib::point_t &) const override;
-	long SetHitAperture(double);
-	long SetHitDirection(const navlib::vector_t &) override;
-	long SetHitSelectionOnly(bool) override;
-	long SetHitLookFrom(const navlib::point_t &) override;
 	long GetPivotVisible(navlib::bool_t &) const override;
-	long SetPivotVisible(bool) override;
-	long SetSelectionTransform(const navlib::matrix_t &) override
-	{
-		return navlib::make_result_code(navlib::navlib_errc::no_data_available);
-	}
 	long GetSelectionTransform(navlib::matrix_t &) const override
 	{
 		return navlib::make_result_code(navlib::navlib_errc::no_data_available);
@@ -109,8 +93,24 @@ public:
 	{
 		return navlib::make_result_code(navlib::navlib_errc::no_data_available);
 	}
-
 	long GetPointerPosition(navlib::point_t &) const override;
+
+
+	long SetCameraMatrix(const navlib::matrix_t &) override;
+	long SetViewFOV(double) override;
+	long SetViewExtents(const navlib::box_t &) override;
+	long SetViewFrustum(const navlib::frustum_t &) override;
+	long IsUserPivot(navlib::bool_t &) const override;
+	long SetPivotPosition(const navlib::point_t &) override;
+	long SetHitAperture(double);
+	long SetHitDirection(const navlib::vector_t &) override;
+	long SetHitSelectionOnly(bool) override;
+	long SetHitLookFrom(const navlib::point_t &) override;
+	long SetPivotVisible(bool) override;
+	long SetSelectionTransform(const navlib::matrix_t &) override
+	{
+		return navlib::make_result_code(navlib::navlib_errc::no_data_available);
+	}
 	long SetActiveCommand(std::string) override;
 	void SetCommandHandler(std::function<void(std::string)> f);
 };

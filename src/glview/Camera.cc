@@ -83,6 +83,11 @@ void Camera::zoom(int zoom, bool relative)
 	}
 }
 
+void Camera::scaleDistance(double scale)
+{
+	this->viewer_distance *= scale;
+}
+
 Camera::ProjectionType Camera::GetProjection() const
 {
 	return this->projection;
@@ -227,6 +232,14 @@ Camera::Frustum Camera::getFrustum() const
 						half_near_height,
 						near_,
 						far_};
+	}
+	else {
+		auto height = viewer_distance * tan_degrees(fov / 2.0);
+		double aspectRatio = static_cast<double>(pixel_width) / static_cast<double>(pixel_height);
+
+		return{-height * aspectRatio, height * aspectRatio,
+		        -height, height,
+		        -100.0 * viewer_distance, 100.0 * viewer_distance};
 	}
 
 	return Camera::Frustum();

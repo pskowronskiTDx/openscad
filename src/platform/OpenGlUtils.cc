@@ -14,6 +14,7 @@
 
 #include "iostream"
 
+
 constexpr double kEpsilon5 = 1.0e-5;
 
 #if DEBUG
@@ -266,11 +267,11 @@ void GlPickInit(Camera const& cam, Eigen::Vector2d const& center, Eigen::Vector2
 	case Camera::ProjectionType::PERSPECTIVE: {
 		gluPerspective(cam.fov, aspectratio, 0.1 * dist, 100 * dist);
 		break;
-	}
+	} 
 	default:
 	case Camera::ProjectionType::ORTHOGONAL: {
-		auto height = dist * tan_degrees(cam.fov / 2);
-		glOrtho(-height * aspectratio, height * aspectratio, -height, height, -100 * dist, +100 * dist);
+		auto height = dist * tan_degrees(cam.fov / 2.0);
+		glOrtho(-height * aspectratio, height * aspectratio, -height, height, -100.0 * dist, 100.0 * dist);
 		break;
 	}
 	}
@@ -308,7 +309,9 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 	GLint viewport[4];
 	glGetIntegerv(GL_VIEWPORT, viewport);
 
-	auto aperture = ComputeAperture(viewport, diameter, cam.getFrustum());
+	//auto aperture = ComputeAperture(viewport, diameter, cam.getFrustum()); // Bugged - wrong depth value
+	
+	Eigen::Vector2d aperture(5.0, 5.0);
 
 	// position the pick point in the middle of the viewport
 	Eigen::Vector2d pickPoint((viewport[2] + 1) / 2, (viewport[3] + 1) / 2);
@@ -333,14 +336,14 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 	Eigen::Vector2d readPoint(
 			{pickPoint.x() - (aperture.x() / 2.0), pickPoint.y() - (aperture.y() / 2.0)});
 
-	const long bufferSize = aperture.x() * aperture.y();
+	const long bufferSize = aperture.x() * aperture.y(); // problem - garbage being calculated for an ortho view
 	std::unique_ptr<GLfloat[]> depthBuffer(new GLfloat[bufferSize]);
 
 	glReadPixels(readPoint.x(), readPoint.y(), aperture.x(), aperture.y(), GL_DEPTH_COMPONENT,
 							 GL_FLOAT, depthBuffer.get());
 
-    QImage image = framebuffer->toImage();
-    image.save(R"(D:\Users\mbonk\Pictures\openscad\image.jpg)");
+    //QImage image = framebuffer->toImage();
+    //image.save(R"(D:\Users\mbonk\Pictures\openscad\image.jpg)");	
 
 	glMatrixMode(GL_PROJECTION); // select the project matrix stack
 	glPopMatrix();               // pop the previous project matrix
@@ -369,9 +372,9 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 		bits[j] = {c,c,c,0xff};
 	}
 
-	SaveAsBitmap(L"D:/users/mbonk/Pictures/openscad/GetZBufferDepth.bmp", aperture.x(), aperture.y(), bits);
+	SaveAsBitmap(L"GetZBufferDepth.bmp", aperture.x(), aperture.y(), bits);
 #endif
-
+	
 	int i, pos = 0;
 	GLfloat depth = depthBuffer[pos];
 
@@ -381,8 +384,8 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 			depth = depthBuffer[pos];
 		}
 	}
-	if (depth == 1.) {
-		return cam.getFrustum().farVal;
+	if (depth > 0.999) {
+		return -1.0;
 	}
 
 	size_t y = pos / aperture.x();
