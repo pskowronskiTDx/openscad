@@ -78,10 +78,10 @@ long TDMouseInput::GetHitLookAt(navlib::point_t &p) const
 
 	double distance = GetZBufferDepth(hitLookFrom_, hitDirection_, hitAperture_, pQGLView->cam,
 																		prepareDrawer, drawer);
-	if (distance > 0.0) {
+	if (distance != 0.0) {
 		auto hitlookat = (hitLookFrom_ + hitDirection_ * distance).eval();
 		//only for drawing should be removed
-		//pQGLView->cam.hitLookAt_=hitlookat;
+		pQGLView->cam.hitLookAt_=hitlookat;
 		std::memcpy(&p.x, hitlookat.data(),hitlookat.size()*sizeof(double));
 		return 0;
 	}

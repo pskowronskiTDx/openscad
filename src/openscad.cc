@@ -832,13 +832,13 @@ int gui(vector<string>& inputFiles, const fs::path& original_path, int argc, cha
 #endif
 #ifdef ENABLE_SPACEMOUSEPRO
 	TDMouseInput *SpaceMouse = new TDMouseInput(win->qglview);
-	//std::shared_ptr<std::thread> tContainer_= std::make_shared<std::thread>(&TDMouseInput::Run, *SpaceMouse);
+	std::shared_ptr<std::thread> tContainer_= std::make_shared<std::thread>(&TDMouseInput::Run, *SpaceMouse);
 	SpaceMouse->Open3DxWare();
 	QActionsHandler cmdHandler;
 	cmdHandler.win_=win;
 	cmdHandler.ExportApplicationCmds(SpaceMouse);
 	SpaceMouse->SetCommandHandler([&cmdHandler](std::string s){cmdHandler.SetActiveCmd(s);});
-	//tContainer_->detach(); 
+	tContainer_->detach(); 
 #endif
 	InputDriverManager::instance()->init();
 	int rc = app.exec();

@@ -268,12 +268,13 @@ void GlPickInit(Camera const& cam, Eigen::Vector2d const& center, Eigen::Vector2
 		gluPerspective(cam.fov, aspectratio, 0.1 * dist, 100 * dist);
 		break;
 	} 
-	default:
 	case Camera::ProjectionType::ORTHOGONAL: {
 		auto height = dist * tan_degrees(cam.fov / 2.0);
 		glOrtho(-height * aspectratio, height * aspectratio, -height, height, -100.0 * dist, 100.0 * dist);
 		break;
 	}
+	default:
+	break;
 	}
 }
 
@@ -309,9 +310,7 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 	GLint viewport[4];
 	glGetIntegerv(GL_VIEWPORT, viewport);
 
-	//auto aperture = ComputeAperture(viewport, diameter, cam.getFrustum()); // Bugged - wrong depth value
-	
-	Eigen::Vector2d aperture(5.0, 5.0);
+	auto aperture = ComputeAperture(viewport, diameter, cam.getFrustum());
 
 	// position the pick point in the middle of the viewport
 	Eigen::Vector2d pickPoint((viewport[2] + 1) / 2, (viewport[3] + 1) / 2);
@@ -326,7 +325,7 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 	glGetDoublev(GL_MODELVIEW_MATRIX, modelMatrix);
 	GLdouble projectionMatrix[16];
 	glGetDoublev(GL_PROJECTION_MATRIX, projectionMatrix);
-
+	
 	drawer(&shaderInfo);
 
 	glFlush();
@@ -336,14 +335,15 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 	Eigen::Vector2d readPoint(
 			{pickPoint.x() - (aperture.x() / 2.0), pickPoint.y() - (aperture.y() / 2.0)});
 
-	const long bufferSize = aperture.x() * aperture.y(); // problem - garbage being calculated for an ortho view
+	const long bufferSize = aperture.x() * aperture.y(); 
 	std::unique_ptr<GLfloat[]> depthBuffer(new GLfloat[bufferSize]);
 
+	// Depth buffer remains empty sometimes
 	glReadPixels(readPoint.x(), readPoint.y(), aperture.x(), aperture.y(), GL_DEPTH_COMPONENT,
 							 GL_FLOAT, depthBuffer.get());
 
     //QImage image = framebuffer->toImage();
-    //image.save(R"(D:\Users\mbonk\Pictures\openscad\image.jpg)");	
+    //image.save("image.jpg");	
 
 	glMatrixMode(GL_PROJECTION); // select the project matrix stack
 	glPopMatrix();               // pop the previous project matrix
@@ -384,8 +384,12 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 			depth = depthBuffer[pos];
 		}
 	}
-	if (depth > 0.999) {
-		return -1.0;
+
+	if(depth == 1.0){
+		return cam.zoomValue() * 100.0;
+	}
+	else if(depth == 0.0){
+		return depth;
 	}
 
 	size_t y = pos / aperture.x();
