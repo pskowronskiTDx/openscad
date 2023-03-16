@@ -8,6 +8,8 @@
 #include "OpenGlUtils.h"
 #include "system-gl.h"
 #include "renderer.h"
+#include "QGLView.h"
+
 #include <QOpenGLFramebufferObject>
 #include <QCursor>
 #include <QImage>
@@ -405,21 +407,19 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 }
 
 
-Eigen::Vector3d GetCursorWorldCoordinates( Camera const &cam, Eigen::Vector2d const& mousePos) {
-	GLint viewport[4];
-	glGetIntegerv(GL_VIEWPORT, viewport);
+Eigen::Vector3d getCursorInWorld(QGLView *const pQGLView, uint32_t cursorX, uint32_t cursorY) {
 
+	Camera &cam = pQGLView->cam;
+	GLint viewport[4] = {0, 0, static_cast<GLint>(cam.pixel_width), static_cast<GLint>(cam.pixel_height)};
+	
 	GLdouble projectionMatrix[16];
-	glGetDoublev(GL_PROJECTION_MATRIX, projectionMatrix);
+	pQGLView->getCurrentProjection(projectionMatrix);
 
-	Eigen::Affine3d affine = cam.getAffine();
-	Eigen::Affine3d modelView = affine.inverse();
+  	GLdouble x = 0.0, y = 0.0, z = 0.0;
 
-  	GLdouble objx, objy, objz;
-  	gluUnProject(mousePos.x(),mousePos.y(), 0,
-               modelView.data(), projectionMatrix, viewport, &objx, &objy,
-               &objz);
+	gluUnProject(cursorX, viewport[3] - cursorY, 0.05,
+				 cam.getAffine().inverse().data(), projectionMatrix, viewport,
+				 &x, &y, &z);
 
-	// std::cout << "(" <<globalCursorPos.rx() << "," <<globalCursorPos.ry() << ")" << std::endl;
-	return {objx,objy,objz};
+	return Eigen::Vector3d(x, y, z);
 }

@@ -80,8 +80,6 @@ long TDMouseInput::GetHitLookAt(navlib::point_t &p) const
 																		prepareDrawer, drawer);
 	if (distance != 0.0) {
 		auto hitlookat = (hitLookFrom_ + hitDirection_ * distance).eval();
-		//only for drawing should be removed
-		pQGLView->cam.hitLookAt_=hitlookat;
 		std::memcpy(&p.x, hitlookat.data(),hitlookat.size()*sizeof(double));
 		return 0;
 	}
@@ -111,8 +109,6 @@ long TDMouseInput::SetHitSelectionOnly(bool hso)
 long TDMouseInput::SetHitLookFrom(const navlib::point_t &hitLookFrom)
 {
 	std::memcpy(hitLookFrom_.data(), &hitLookFrom.x, sizeof(double) * hitLookFrom_.size());
-	//only for drawing should be removed
-	pQGLView->cam.hitLookFrom_=hitLookFrom_;
 	return 0;
 }
 
@@ -128,13 +124,13 @@ long TDMouseInput::SetPivotVisible(bool v)
 }
 
 // ptr
-long TDMouseInput::GetPointerPosition(navlib::point_t & p) const{
+long TDMouseInput::GetPointerPosition(navlib::point_t & p) const {
 
-	QPoint pos = QCursor::pos();
-	pos = pQGLView->mapFromGlobal(pos);
+	QPoint cursorPosition = QCursor::pos();
+	cursorPosition = pQGLView->mapFromGlobal(cursorPosition);
 
-	auto mousePos = GetCursorWorldCoordinates(pQGLView->cam, Eigen::Vector2d({pos.x(),pos.y()}));
-	std::cout << mousePos.transpose() << std::endl;
-	std::memcpy(&p.x,mousePos.data(), mousePos.size()*sizeof(double));
+	Eigen::Vector3d cursorCoordinates = getCursorInWorld(pQGLView, cursorPosition.x(), cursorPosition.y());
+	std::memcpy(&p.x, cursorCoordinates.data(), cursorCoordinates.size() * sizeof(double));
+
 	return 0;
 }

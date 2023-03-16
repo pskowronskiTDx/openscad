@@ -34,7 +34,7 @@ public:
 	void gimbalDefaultTranslate();
 	void setProjection(ProjectionType type);
 	void zoom(int delta, bool relative);
-	void scaleDistance(double scale);
+	void setDistance(double distance);
   [[nodiscard]] double zoomValue() const;
   [[nodiscard]] double fovValue() const;
 	void resetView();
@@ -60,8 +60,6 @@ public:
 	ProjectionType GetProjection() const;
 	void setFrustum(Camera::Frustum const &);
 
-	Eigen::Vector3d hitLookAt_;
-	Eigen::Vector3d hitLookFrom_;
 	// true if camera should try to view everything in a given
 	// bounding box.
   bool viewall{false};
@@ -82,10 +80,6 @@ public:
 	Eigen::Affine3d getModelMatrix() const;
 	Eigen::Affine3d getAffine() const;
 	bool setAffine(const Eigen::Matrix4d &m);
-
-private:
-	double near_ = 0.1;
-	double far_ = 1000.;
 
 protected:
 	// Perspective settings

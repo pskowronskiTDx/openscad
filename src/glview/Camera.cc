@@ -83,9 +83,9 @@ void Camera::zoom(int zoom, bool relative)
 	}
 }
 
-void Camera::scaleDistance(double scale)
+void Camera::setDistance(double distance)
 {
-	this->viewer_distance *= scale;
+	this->viewer_distance = distance;
 }
 
 Camera::ProjectionType Camera::GetProjection() const
@@ -225,6 +225,9 @@ Camera::Frustum Camera::getFrustum() const
 	if (projection == ProjectionType::PERSPECTIVE) {
 		double aspectRatio = static_cast<double>(pixel_width) / static_cast<double>(pixel_height);
 		double tanfh = tan(deg2rad(fov) / 2.);
+
+		double near_ = 0.1 * viewer_distance;
+		double far_ = 100.0 * viewer_distance;
 		double half_near_height = near_ * tanfh;
 		return {-half_near_height * aspectRatio,
 						half_near_height * aspectRatio,

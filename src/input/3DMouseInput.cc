@@ -141,9 +141,7 @@ long TDMouseInput::GetViewExtents(navlib::box_t &bounding_box) const
 long TDMouseInput::SetViewExtents(const navlib::box_t &bounding_box)
 {
 	auto &cam = pQGLView->cam;
-	double half_height = cam.zoomValue() * tan_degrees(cam.fov / 2.0);
-	
-	cam.scaleDistance(bounding_box.max.y / half_height);
+	cam.setDistance(bounding_box.max.y / tan_degrees(cam.fov / 2.0));
 	
 	return 0;
 }

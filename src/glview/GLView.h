@@ -66,6 +66,7 @@ public:
   void setPivotVisibility(bool isVisible);
   bool getPivotVisibility() const;
   Eigen::Vector3d getPivotPosition() const;
+  void getCurrentProjection(double out[16]) const;
   
 	Renderer *renderer;
 	const ColorScheme *colorscheme;
@@ -92,11 +93,13 @@ private:
 	bool isVisible = false;
 	QImage icon;
   } pivot;
+  mutable double currentProjection[16];
+  void drawPivot();
 
   void showCrosshairs(const Color4f& col);
   void showAxes(const Color4f& col);
   void showSmallaxes(const Color4f& col);
   void showScalemarkers(const Color4f& col);
   void decodeMarkerValue(double i, double l, int size_div_sm);
-  void drawPivot();
+  
 };

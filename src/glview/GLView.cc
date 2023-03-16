@@ -31,6 +31,7 @@ GLView::GLView()
   colorscheme = &ColorMap::inst()->defaultColorScheme();
   cam = Camera();
   far_far_away = RenderSettings::inst()->far_gl_clip_limit;
+  ZeroMemory(currentProjection, 16u * sizeof(double));
 #ifdef ENABLE_OPENCSG
   is_opencsg_capable = false;
   has_shaders = false;
@@ -78,6 +79,12 @@ bool GLView::getPivotVisibility() const
 Eigen::Vector3d GLView::getPivotPosition() const 
 {
   return pivot.position;
+}
+
+void GLView::getCurrentProjection(double out[16]) const
+{
+  memcpy(out, currentProjection, 16u * sizeof(double));
+  return;
 }
 
 /* change this GLView's colorscheme to the one given, and update the
@@ -133,6 +140,9 @@ void GLView::setupCamera() const
 		break;
 	}
   }
+
+  glGetDoublev(GL_PROJECTION_MATRIX, reinterpret_cast<GLdouble*>(currentProjection));
+
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
   gluLookAt(0.0, -dist, 0.0, // eye
