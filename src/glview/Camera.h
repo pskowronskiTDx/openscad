@@ -57,7 +57,7 @@ public:
 	// Perspective settings
 	double fov; // Field of view
 
-	ProjectionType GetProjection() const;
+	ProjectionType getProjection() const;
 	void setFrustum(Camera::Frustum const &);
 
 	Eigen::Vector3d hitLookAt_;

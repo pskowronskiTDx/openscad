@@ -32,11 +32,11 @@
 constexpr double MIN_ZOOM = 1 ;
 constexpr std::size_t MATRIX_SIZE = 16 * sizeof(double);
 
-TDMouseInput::TDMouseInput(QGLView *pQGLView_ , bool multiThreaded, bool rowMajor) 
+TDMouseInput::TDMouseInput(QGLView *pQGLView_ , bool multiThreaded, bool rowMajor)
 	: TDx::SpaceMouse::Navigation3D::CNavigation3D(multiThreaded, rowMajor)
 	, m_cv_m_(std::make_shared<std::mutex>())
 	, m_cv_(std::make_shared<std::condition_variable>())
-	, pQGLView(pQGLView_) 
+	, pQGLView(pQGLView_)
 {
   	QString pivotIconPath = QCoreApplication::applicationDirPath();
   	pivotIconPath.append("/resources/icons/3dx_pivot.png");
@@ -75,7 +75,7 @@ void TDMouseInput::Close3DxWare()
 	EnableNavigation(false);
 }
 
-long TDMouseInput::GetCoordinateSystem(navlib::matrix_t &matrix) const 
+long TDMouseInput::GetCoordinateSystem(navlib::matrix_t &matrix) const
 {
 	matrix.m00 = 1.0;
 	std::memcpy(&matrix.m00, Eigen::Matrix4d::Identity().eval().data(), MATRIX_SIZE);
@@ -96,7 +96,7 @@ long TDMouseInput::SetCameraMatrix(const navlib::matrix_t &affine)
 
 long TDMouseInput::GetIsViewPerspective(navlib::bool_t &p) const
 {
-	p = pQGLView->cam.GetProjection() == Camera::ProjectionType::PERSPECTIVE;
+	p = pQGLView->cam.getProjection() == Camera::ProjectionType::PERSPECTIVE;
 	return 0;
 }
 
@@ -125,47 +125,43 @@ long TDMouseInput::GetModelExtents(navlib::box_t &nav_box) const
 
 long TDMouseInput::GetViewExtents(navlib::box_t &bounding_box) const
 {
-	auto &cam = pQGLView->cam;
-	double aspectratio = static_cast<double>(cam.pixel_width) / static_cast<double>(cam.pixel_height);
-	double dist = cam.zoomValue();
-	double half_height = dist * tan_degrees(cam.fov / 2.0);
-	double half_width = half_height * aspectratio;
+	if (pQGLView->cam.getProjection() == Camera::ProjectionType::PERSPECTIVE)
+	{
+		return navlib::make_result_code(navlib::navlib_errc::invalid_operation);
+	}
 
-	dist *= 100.0;
+	const auto frustum = pQGLView->cam.getFrustum();
 
-	bounding_box = {-half_width, -half_height, -dist, half_width, half_height, dist};
+	bounding_box = {frustum.left, frustum.bottom, frustum.nearVal, frustum.right, frustum.top, frustum.farVal};
 
 	return 0;
 }
 
 long TDMouseInput::SetViewExtents(const navlib::box_t &bounding_box)
 {
-	auto &cam = pQGLView->cam;
-	double half_height = cam.zoomValue() * tan_degrees(cam.fov / 2.0);
-	
-	cam.scaleDistance(bounding_box.max.y / half_height);
-	
+	if (pQGLView->cam.getProjection() == Camera::ProjectionType::PERSPECTIVE)
+	{
+		return navlib::make_result_code(navlib::navlib_errc::invalid_operation);
+	}
+
+	const auto frustum = pQGLView->cam.getFrustum();
+	pQGLView->cam.scaleDistance((bounding_box.max.y - bounding_box.min.y)/ (frustum.top - frustum.bottom));
+
 	return 0;
 }
 
 long TDMouseInput::GetViewFrustum(navlib::frustum_t &f) const
 {
-	auto &cam = pQGLView->cam;
-
-	if (cam.projection == Camera::ProjectionType::PERSPECTIVE) {
-		// view perspective
-		const auto frustum = cam.getFrustum();
-		f.right = frustum.right;
-		f.left = frustum.left;
-		f.bottom = frustum.bottom;
-		f.top = frustum.top;
-		f.nearVal = frustum.nearVal;
-		f.farVal = frustum.farVal;
-
-		return 0;
+	if (pQGLView->cam.getProjection() != Camera::ProjectionType::PERSPECTIVE) {
+		return navlib::make_result_code(navlib::navlib_errc::invalid_operation);
 	}
 
-	return navlib::make_result_code(navlib::navlib_errc::invalid_operation);
+	const auto frustum = pQGLView->cam.getFrustum();
+	// Set a fixed nearVal to work around the navlib assuming the near is fixed.
+	const double nf = 0.01 / frustum.nearVal;
+	f = {frustum.left * nf, frustum.right * nf, frustum.bottom * nf, frustum.top *nf, frustum.nearVal * nf, frustum.farVal};
+
+	return 0;
 }
 
 long TDMouseInput::SetViewFrustum(const navlib::frustum_t &f)

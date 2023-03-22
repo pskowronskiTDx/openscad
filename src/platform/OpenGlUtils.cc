@@ -119,7 +119,6 @@ void GlModelView(Camera const &cam, Eigen::Vector3d const& lookdir, Eigen::Vecto
 	Eigen::Vector3d up(affine(0,1), affine(1,1), affine(2,1));
 
 	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
 	glLoadIdentity();
 	gluLookAt(lookfrom[0], lookfrom[1], lookfrom[2],
 			  lookAt[0], lookAt[1], lookAt[2],		// center
@@ -245,7 +244,6 @@ void GlPickInit(Camera const& cam, Eigen::Vector2d const& center, Eigen::Vector2
 	glClearColor(0, 0, 0, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glPushAttrib(GL_ENABLE_BIT);
 	glDisable(GL_LIGHTING);
 
 	glEnable(GL_DEPTH_TEST);
@@ -253,24 +251,23 @@ void GlPickInit(Camera const& cam, Eigen::Vector2d const& center, Eigen::Vector2
 	glDepthFunc(GL_LESS);
 
 	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
 	glLoadIdentity();
 
 	GLint viewport[4];
 	glGetIntegerv(GL_VIEWPORT, viewport);
+
+	const auto frustum = cam.getFrustum();
+
 	gluPickMatrix(center.x(), center.y(), region.x(), region.y(), viewport);
 
-	double dist = cam.zoomValue();
-	double aspectratio = static_cast<double>(viewport[2]) / static_cast<double>(viewport[3]);
-
-	switch (cam.projection) {
+	switch (cam.getProjection()) {
 	case Camera::ProjectionType::PERSPECTIVE: {
-		gluPerspective(cam.fov, aspectratio, 0.1 * dist, 100 * dist);
+		const double aspectratio = (frustum.right - frustum.left) / (frustum.top - frustum.bottom);
+		gluPerspective(cam.fov, aspectratio, frustum.nearVal, frustum.farVal);
 		break;
-	} 
+	}
 	case Camera::ProjectionType::ORTHOGONAL: {
-		auto height = dist * tan_degrees(cam.fov / 2.0);
-		glOrtho(-height * aspectratio, height * aspectratio, -height, height, -100.0 * dist, 100.0 * dist);
+		glOrtho(frustum.left, frustum.right, frustum.bottom, frustum.top, 0, frustum.farVal -frustum.nearVal);
 		break;
 	}
 	default:
@@ -296,27 +293,34 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 	prepareDrawer(&shaderInfo);
 
 	QOpenGLFramebufferObjectFormat fboFormat;
-	fboFormat.setSamples(0);	
+	fboFormat.setSamples(0);
 	fboFormat.setAttachment(QOpenGLFramebufferObject::Depth);
-	
+
 	std::unique_ptr<QOpenGLFramebufferObject> framebuffer;
 	framebuffer.reset(new QOpenGLFramebufferObject(cam.pixel_width, cam.pixel_height,
 		fboFormat));
 	framebuffer->release();
 	framebuffer->bind();
 
-	glViewport(0, 0, cam.pixel_width, cam.pixel_height);
+	glPushAttrib(GL_ENABLE_BIT);
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
 
+	glViewport(0, 0, cam.pixel_width, cam.pixel_height);
 	GLint viewport[4];
 	glGetIntegerv(GL_VIEWPORT, viewport);
 
-	auto aperture = ComputeAperture(viewport, diameter, cam.getFrustum());
+	const auto aperture = ComputeAperture(viewport, diameter, cam.getFrustum());
 
 	// position the pick point in the middle of the viewport
 	Eigen::Vector2d pickPoint((viewport[2] + 1) / 2, (viewport[3] + 1) / 2);
 
+
 	auto far_value=1.0f;
 	glClearBufferfv(GL_DEPTH, 0, &far_value);
+
 	GlPickInit(cam, pickPoint, aperture);
 
 	GlModelView (cam, direction, position);
@@ -325,25 +329,25 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 	glGetDoublev(GL_MODELVIEW_MATRIX, modelMatrix);
 	GLdouble projectionMatrix[16];
 	glGetDoublev(GL_PROJECTION_MATRIX, projectionMatrix);
-	
+
 	drawer(&shaderInfo);
 
 	glFlush();
 	glFinish();
 
-
 	Eigen::Vector2d readPoint(
 			{pickPoint.x() - (aperture.x() / 2.0), pickPoint.y() - (aperture.y() / 2.0)});
 
-	const long bufferSize = aperture.x() * aperture.y(); 
+	const long bufferSize = aperture.x() * aperture.y();
 	std::unique_ptr<GLfloat[]> depthBuffer(new GLfloat[bufferSize]);
 
 	// Depth buffer remains empty sometimes
 	glReadPixels(readPoint.x(), readPoint.y(), aperture.x(), aperture.y(), GL_DEPTH_COMPONENT,
 							 GL_FLOAT, depthBuffer.get());
-
-    //QImage image = framebuffer->toImage();
-    //image.save("image.jpg");	
+#ifdef DEBUG
+    QImage image = framebuffer->toImage();
+    image.save("image.jpg");
+#endif
 
 	glMatrixMode(GL_PROJECTION); // select the project matrix stack
 	glPopMatrix();               // pop the previous project matrix
@@ -357,13 +361,14 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 	framebuffer->release();
 
 #if DumpHitBuffer
+	const auto frustum = cam.getFrustum();
 	std::vector<RGBQUAD> bits;
 	// calculate size and align to a DWORD , we are assuming there is only one plane.
 	size_t size = (static_cast<int>(aperture.x() * (sizeof(RGBQUAD) * 8) + 31) & -31) * aperture.y();
 	bits.resize(size);
 
-	double nearD = 0.1 * cam.zoomValue();
-	double farD = 100 * cam.zoomValue();
+	const double nearD = frustum.nearVal>0?frustum.nearVal:0;
+	const double farD = frustum.farVal;
 	for (int j = 0; j < bufferSize; ++j) {
 		// Linearize the depthbuffer
 		float ndc = depthBuffer[j] * 2 -1;
@@ -374,7 +379,7 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 
 	SaveAsBitmap(L"GetZBufferDepth.bmp", aperture.x(), aperture.y(), bits);
 #endif
-	
+
 	int i, pos = 0;
 	GLfloat depth = depthBuffer[pos];
 
@@ -405,21 +410,31 @@ double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &d
 }
 
 
-Eigen::Vector3d GetCursorWorldCoordinates( Camera const &cam, Eigen::Vector2d const& mousePos) {
+Eigen::Vector3d GetCursorWorldCoordinates( QGLView *view, Eigen::Vector2d const& mousePos) {
+
+    glViewport(0, 0, view->cam.pixel_width, view->cam.pixel_height);
+    view->setupCamera();
+    glTranslated(view->cam.object_trans.x(),
+               view->cam.object_trans.y(),
+               view->cam.object_trans.z());
+
 	GLint viewport[4];
 	glGetIntegerv(GL_VIEWPORT, viewport);
 
 	GLdouble projectionMatrix[16];
 	glGetDoublev(GL_PROJECTION_MATRIX, projectionMatrix);
 
-	Eigen::Affine3d affine = cam.getAffine();
-	Eigen::Affine3d modelView = affine.inverse();
+	GLdouble modelView[16];
+	glGetDoublev(GL_MODELVIEW_MATRIX, modelView);
+
+    GLdouble winZ = 0;
 
   	GLdouble objx, objy, objz;
-  	gluUnProject(mousePos.x(),mousePos.y(), 0,
-               modelView.data(), projectionMatrix, viewport, &objx, &objy,
+
+    // x/y is originated topleft, so turn y around
+  	gluUnProject(mousePos.x(), view->cam.pixel_height - mousePos.y(), winZ,
+               modelView, projectionMatrix, viewport, &objx, &objy,
                &objz);
 
-	// std::cout << "(" <<globalCursorPos.rx() << "," <<globalCursorPos.ry() << ")" << std::endl;
 	return {objx,objy,objz};
 }

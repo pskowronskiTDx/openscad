@@ -27,6 +27,11 @@
 #include "OpenGlUtils.h"
 #include "QGLView.h"
 
+#if DEBUG
+#pragma GCC optimize ("O0")
+#pragma message "Compiling file with optimize -O0"
+#endif
+
 Eigen::Vector3d TransformVGet(Eigen::Vector3d const &p, Eigen::Matrix4d const& transformation)
 {
 	return (p.transpose() * transformation.block<3, 3>(0, 0)).eval();
@@ -39,7 +44,7 @@ Eigen::Vector3d TransformVSet(Eigen::Vector3d const &p, Eigen::Matrix4d const& t
 
 
 long TDMouseInput::GetPivotPosition(navlib::point_t &p) const
-{	
+{
 	std::memcpy(&p.x, pQGLView->getPivotPosition().data(), sizeof(double) * 3u);
 	return 0;
 }
@@ -57,9 +62,7 @@ long TDMouseInput::SetPivotPosition(const navlib::point_t &p)
 }
 
 long TDMouseInput::GetHitLookAt(navlib::point_t &p) const
-{	
-	const auto &frustum = pQGLView->cam.getFrustum();
-
+{
 	auto pCopy = pQGLView;
 
 	std::function<void(const Renderer::shaderinfo_t *shaderInfo)> prepareDrawer =[pCopy](const Renderer::shaderinfo_t *shaderInfo){
@@ -76,8 +79,14 @@ long TDMouseInput::GetHitLookAt(navlib::point_t &p) const
 	 }
 	};
 
+	QOpenGLContext *oldContext = getGLContext();
+	pQGLView->makeCurrent();
+
 	double distance = GetZBufferDepth(hitLookFrom_, hitDirection_, hitAperture_, pQGLView->cam,
 																		prepareDrawer, drawer);
+
+	setGLContext(oldContext);
+
 	if (distance != 0.0) {
 		auto hitlookat = (hitLookFrom_ + hitDirection_ * distance).eval();
 		//only for drawing should be removed
@@ -131,10 +140,18 @@ long TDMouseInput::SetPivotVisible(bool v)
 long TDMouseInput::GetPointerPosition(navlib::point_t & p) const{
 
 	QPoint pos = QCursor::pos();
+
+	QOpenGLContext *oldContext = getGLContext();
+	pQGLView->makeCurrent();
+
 	pos = pQGLView->mapFromGlobal(pos);
 
-	auto mousePos = GetCursorWorldCoordinates(pQGLView->cam, Eigen::Vector2d({pos.x(),pos.y()}));
+	auto mousePos = GetCursorWorldCoordinates(pQGLView, Eigen::Vector2d({pos.x(),pos.y()}));
+
+	setGLContext(oldContext);
+
 	std::cout << mousePos.transpose() << std::endl;
 	std::memcpy(&p.x,mousePos.data(), mousePos.size()*sizeof(double));
+
 	return 0;
 }
