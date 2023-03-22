@@ -58,34 +58,17 @@ long TDMouseInput::SetPivotPosition(const navlib::point_t &p)
 
 long TDMouseInput::GetHitLookAt(navlib::point_t &p) const
 {	
-	const auto &frustum = pQGLView->cam.getFrustum();
-
-	auto pCopy = pQGLView;
-
-	std::function<void(const Renderer::shaderinfo_t *shaderInfo)> prepareDrawer =[pCopy](const Renderer::shaderinfo_t *shaderInfo){
-	auto r = pCopy->getRenderer();
-	if(r){
-    	r->prepare(true, false, shaderInfo);
-	 }
-	};
-
-	std::function<void(const Renderer::shaderinfo_t *shaderInfo)> drawer =[pCopy](const Renderer::shaderinfo_t *shaderInfo){
-	auto r = pCopy->getRenderer();
-	if(r){
-    	r->draw(true, false, shaderInfo);
-	 }
-	};
-
-	double distance = GetZBufferDepth(hitLookFrom_, hitDirection_, hitAperture_, pQGLView->cam,
-																		prepareDrawer, drawer);
-	if (distance != 0.0) {
-		auto hitlookat = (hitLookFrom_ + hitDirection_ * distance).eval();
-		std::memcpy(&p.x, hitlookat.data(),hitlookat.size()*sizeof(double));
-		return 0;
-	}
-	else {
+	Eigen::Vector3d hit = getHitPoint(pQGLView, samplingPattern, hitAperture_, hitDirection_, hitLookFrom_);
+		
+	if(hit.z() == std::numeric_limits<double>::max())
 		return navlib::make_result_code(navlib::navlib_errc::no_data_available);
-	}
+	
+	p.x = hit.x();
+	p.y = hit.y();
+	p.z = hit.z();
+
+	return 0;
+
 }
 
 long TDMouseInput::SetHitAperture(double hitAperture)

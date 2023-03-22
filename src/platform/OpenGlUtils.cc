@@ -1,124 +1,36 @@
-#include <algorithm>
-#include <array>
-#include <cmath>
 #include <memory>
 #include <Eigen/Dense>
 
 #include "degree_trig.h"
 #include "OpenGlUtils.h"
 #include "system-gl.h"
-#include "renderer.h"
 #include "QGLView.h"
+#include "Camera.h"
+#include "renderer.h"
 
 #include <QOpenGLFramebufferObject>
-#include <QCursor>
-#include <QImage>
-
-#include "iostream"
-
-
-constexpr double kEpsilon5 = 1.0e-5;
 
 #if DEBUG
 #pragma GCC optimize ("O0")
 #pragma message "Compiling file with optimize -O0"
-
-#define DumpHitBuffer 1
 #endif
 
-#if DumpHitBuffer
-#pragma pack(push, 1)
-typedef struct tagBITMAPINFOHEADER {
-	DWORD biSize;
-	LONG biWidth;
-	LONG biHeight;
-	WORD biPlanes;
-	WORD biBitCount;
-	DWORD biCompression;
-	DWORD biSizeImage;
-	LONG biXPelsPerMeter;
-	LONG biYPelsPerMeter;
-	DWORD biClrUsed;
-	DWORD biClrImportant;
-} BITMAPINFOHEADER, FAR *LPBITMAPINFOHEADER, *PBITMAPINFOHEADER;
+// Helper functions (visibility limited to the translation unit)
 
-typedef struct tagRGBQUAD {
-	BYTE rgbBlue;
-	BYTE rgbGreen;
-	BYTE rgbRed;
-	BYTE rgbReserved;
-} RGBQUAD;
-
-typedef struct tagBITMAPINFO {
-	BITMAPINFOHEADER bmiHeader;
-	RGBQUAD bmiColors[1];
-} BITMAPINFO, FAR *LPBITMAPINFO, *PBITMAPINFO;
-
-typedef struct tagBITMAPFILEHEADER {
-	WORD bfType;
-	DWORD bfSize;
-	WORD bfReserved1;
-	WORD bfReserved2;
-	DWORD bfOffBits;
-} BITMAPFILEHEADER, FAR *LPBITMAPFILEHEADER, *PBITMAPFILEHEADER;
-#pragma pack(pop)
-
-void SaveAsBitmap(LPCWSTR lpFileName, GLsizei width, GLsizei height, std::vector<RGBQUAD> const & bits) {
-  BITMAPINFO bmi = {0};
-
-  bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-  bmi.bmiHeader.biWidth = width;
-  bmi.bmiHeader.biHeight = height;
-  bmi.bmiHeader.biPlanes = 1; // we are assuming that there is only one plane
-  bmi.bmiHeader.biBitCount = 32;
-  bmi.bmiHeader.biSizeImage = static_cast<DWORD>(bits.size());
-
-  // no compression this is an rgb bitmap
-  bmi.bmiHeader.biCompression = 0; // BI_RGB;
-
-
-  // all device colours are important
-  bmi.bmiHeader.biClrImportant = 0;
-
-  HANDLE hFile = CreateFile(lpFileName, GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
-                            FILE_ATTRIBUTE_NORMAL, NULL);
-
-  if (hFile != INVALID_HANDLE_VALUE) {
-    DWORD dwTemp;
-    BITMAPFILEHEADER hdr = {0};
-    // type == BM
-    hdr.bfType = 0x4d42;
-
-    hdr.bfSize = (sizeof(BITMAPFILEHEADER) + bmi.bmiHeader.biSize +
-                  bmi.bmiHeader.biClrUsed * sizeof(RGBQUAD) + bmi.bmiHeader.biSizeImage);
-    hdr.bfReserved1 = 0;
-    hdr.bfReserved2 = 0;
-
-    hdr.bfOffBits =
-        sizeof(BITMAPFILEHEADER) + bmi.bmiHeader.biSize + bmi.bmiHeader.biClrUsed * sizeof(RGBQUAD);
-
-    // write the bitmap file header to file
-    WriteFile(hFile, (LPVOID)&hdr, sizeof(BITMAPFILEHEADER), &dwTemp, NULL);
-
-    // write the bitmap header to file
-    WriteFile(hFile, (LPVOID)&bmi.bmiHeader,
-              sizeof(BITMAPINFOHEADER) + bmi.bmiHeader.biClrUsed * sizeof(RGBQUAD), &dwTemp, NULL);
-
-    // copy the bitmap colour data into the file
-    WriteFile(hFile, (LPSTR)&bits[0], bmi.bmiHeader.biSizeImage, &dwTemp, NULL);
-
-    CloseHandle(hFile);
-  }
+uint32_t projectAperture(const Camera &camera, const double &aperture) {
+	const double shortestSidePx = static_cast<double>(std::min(camera.pixel_height, camera.pixel_width));
+	const double frustumHeight = camera.getFrustum().top - camera.getFrustum().bottom;
+	const double frustumWidth = camera.getFrustum().right - camera.getFrustum().left;
+	const double shortestSideWorld = std::min(frustumHeight, frustumWidth);
+	return static_cast<uint32_t>((shortestSidePx * aperture) / shortestSideWorld);
 }
-#endif
 
-
-void GlModelView(Camera const &cam, Eigen::Vector3d const& lookdir, Eigen::Vector3d const& lookfrom)
+void glModelView(Camera const &camera, const Eigen::Vector3d &lookdir, const Eigen::Vector3d &lookfrom)
 {
-	Eigen::Affine3d affine = cam.getAffine();
-	Eigen::Vector3d lookAt = lookdir + lookfrom;
+	const Eigen::Affine3d affine = camera.getAffine();
+	const Eigen::Vector3d lookAt = lookdir + lookfrom;
 	// The camera's up axis is its y-axis.
-	Eigen::Vector3d up(affine(0,1), affine(1,1), affine(2,1));
+	const Eigen::Vector3d up(affine(0,1), affine(1,1), affine(2,1));
 
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
@@ -128,46 +40,45 @@ void GlModelView(Camera const &cam, Eigen::Vector3d const& lookdir, Eigen::Vecto
 			  up[0], up[1], up[2]);                 // up
 }
 
-/**
- * lookfrom
- * direction
- * diameter
- * frustum
- *
- * */
-Eigen::Vector2d ComputeAperture(GLint viewport[4], double diameter, Camera::Frustum const &f)
+void glPickInit(Camera const &cam, const double &aperture)
 {
-	int aperturex = 0;
-	int aperturey = 0;
-	if (viewport[2] > viewport[3]) {
-		aperturex =
-				1 + static_cast<int>(diameter * static_cast<double>(viewport[2]) / (f.right - f.left));
-		if (aperturex > viewport[3]) {
-			aperturey = viewport[3];
-		}
-		aperturey = aperturex;
-	}
-	else {
-		aperturey =
-				1 + static_cast<int>(diameter * static_cast<double>(viewport[3]) / (f.top - f.bottom));
-		if (aperturey > viewport[2]) {
-			aperturex = viewport[2];
-		}
-		aperturex = aperturey;
-	}
+	glClearColor(0, 0, 0, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// Ensure x and y are odd so that we know where the central pixel is
-	if (!(aperturex & 0x01)) {
-		--aperturex;
+	glPushAttrib(GL_ENABLE_BIT);
+	glDisable(GL_LIGHTING);
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+	glDepthFunc(GL_LESS);
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+
+	GLint viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	gluPickMatrix(viewport[2] / 2.0, viewport[3]/ 2.0, aperture, aperture, viewport);
+
+	const double dist = cam.zoomValue();
+	const double aspectratio = static_cast<double>(viewport[2]) / static_cast<double>(viewport[3]);
+
+	switch (cam.projection) {
+	case Camera::ProjectionType::PERSPECTIVE: {
+		gluPerspective(cam.fov, aspectratio, 0.1 * dist, 100 * dist);
+		break;
+	} 
+	case Camera::ProjectionType::ORTHOGONAL: {
+		const double height = dist * tan_degrees(cam.fov / 2.0);
+		glOrtho(-height * aspectratio, height * aspectratio, -height, height, -100.0 * dist, 100.0 * dist);
+		break;
 	}
-	if (!(aperturey & 0x01)) {
-		--aperturey;
+	default:
+	break;
 	}
-	return {aperturex, aperturey};
 }
 
-
-Renderer::shaderinfo_t CreateShaderInfo(const std::string &shaderVertexfile, const std::string &shaderFragfile)
+Renderer::shaderinfo_t createShaderInfo(const std::string &shaderVertexfile, const std::string &shaderFragfile)
 {
 	Renderer::shaderinfo_t shaderinfo;
 	std::string vs_str = Renderer::loadShaderSource(shaderVertexfile);
@@ -242,175 +153,98 @@ Renderer::shaderinfo_t CreateShaderInfo(const std::string &shaderVertexfile, con
 	return shaderinfo;
 }
 
-void GlPickInit(Camera const& cam, Eigen::Vector2d const& center, Eigen::Vector2d const& region)
+// Public funtions (visible if OpenGlUtils.h included)
+
+Eigen::Vector3d getHitPoint(QGLView *const pQGLView, 
+							const std::vector<Eigen::Vector2d> &samplingPattern, 
+							const double &apertureInWorld,
+							const Eigen::Vector3d &lookDirection,
+							const Eigen::Vector3d &lookFrom)
 {
-	glClearColor(0, 0, 0, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	const Renderer::shaderinfo_t shaderInfo = createShaderInfo("MouseSelector.vert", "MouseSelector.frag");
 
-	glPushAttrib(GL_ENABLE_BIT);
-	glDisable(GL_LIGHTING);
-
-	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE);
-	glDepthFunc(GL_LESS);
-
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadIdentity();
-
-	GLint viewport[4];
-	glGetIntegerv(GL_VIEWPORT, viewport);
-	gluPickMatrix(center.x(), center.y(), region.x(), region.y(), viewport);
-
-	double dist = cam.zoomValue();
-	double aspectratio = static_cast<double>(viewport[2]) / static_cast<double>(viewport[3]);
-
-	switch (cam.projection) {
-	case Camera::ProjectionType::PERSPECTIVE: {
-		gluPerspective(cam.fov, aspectratio, 0.1 * dist, 100 * dist);
-		break;
-	} 
-	case Camera::ProjectionType::ORTHOGONAL: {
-		auto height = dist * tan_degrees(cam.fov / 2.0);
-		glOrtho(-height * aspectratio, height * aspectratio, -height, height, -100.0 * dist, 100.0 * dist);
-		break;
-	}
-	default:
-	break;
-	}
-}
-
-
-Eigen::Vector3d GetHitPoint( Camera const &cam, std::function<void(const Renderer::shaderinfo_t *)> prepareDrawer,
-											 std::function<void(const Renderer::shaderinfo_t *)> drawer) {
-	Eigen::Vector3d result;
-	return result;
-}
-
-double GetZBufferDepth(Eigen::Vector3d const &position, Eigen::Vector3d const &direction,
-											 double diameter, Camera const &cam,
-											 std::function<void(const Renderer::shaderinfo_t *)> prepareDrawer,
-											 std::function<void(const Renderer::shaderinfo_t *)> drawer)
-{
-
-	Renderer::shaderinfo_t shaderInfo = CreateShaderInfo("MouseSelector.vert", "MouseSelector.frag");
-
-	prepareDrawer(&shaderInfo);
+	pQGLView->renderer->prepare(true, false, &shaderInfo);
 
 	QOpenGLFramebufferObjectFormat fboFormat;
 	fboFormat.setSamples(0);	
 	fboFormat.setAttachment(QOpenGLFramebufferObject::Depth);
 	
+	const GLint viewport[4] = {
+		0,
+		0, 
+		static_cast<GLint>(pQGLView->cam.pixel_width),
+		static_cast<GLint>(pQGLView->cam.pixel_height)};
+
+	glViewport(0, 0, viewport[2], viewport[3]);
+
 	std::unique_ptr<QOpenGLFramebufferObject> framebuffer;
-	framebuffer.reset(new QOpenGLFramebufferObject(cam.pixel_width, cam.pixel_height,
-		fboFormat));
+	framebuffer.reset(new QOpenGLFramebufferObject(viewport[2], viewport[3], fboFormat));
 	framebuffer->release();
 	framebuffer->bind();
+                   
+	const double aperture = projectAperture(pQGLView->cam, apertureInWorld);
 
-	glViewport(0, 0, cam.pixel_width, cam.pixel_height);
-
-	GLint viewport[4];
-	glGetIntegerv(GL_VIEWPORT, viewport);
-
-	auto aperture = ComputeAperture(viewport, diameter, cam.getFrustum());
-
-	// position the pick point in the middle of the viewport
-	Eigen::Vector2d pickPoint((viewport[2] + 1) / 2, (viewport[3] + 1) / 2);
-
-	auto far_value=1.0f;
-	glClearBufferfv(GL_DEPTH, 0, &far_value);
-	GlPickInit(cam, pickPoint, aperture);
-
-	GlModelView (cam, direction, position);
+	glPickInit(pQGLView->cam, aperture);
+	glModelView(pQGLView->cam, lookDirection, lookFrom);
 
 	GLdouble modelMatrix[16];
 	glGetDoublev(GL_MODELVIEW_MATRIX, modelMatrix);
+
 	GLdouble projectionMatrix[16];
 	glGetDoublev(GL_PROJECTION_MATRIX, projectionMatrix);
 	
-	drawer(&shaderInfo);
+	pQGLView->renderer->draw(true, false, &shaderInfo);
 
 	glFlush();
 	glFinish();
 
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
 
-	Eigen::Vector2d readPoint(
-			{pickPoint.x() - (aperture.x() / 2.0), pickPoint.y() - (aperture.y() / 2.0)});
-
-	const long bufferSize = aperture.x() * aperture.y(); 
-	std::unique_ptr<GLfloat[]> depthBuffer(new GLfloat[bufferSize]);
-
-	// Depth buffer remains empty sometimes
-	glReadPixels(readPoint.x(), readPoint.y(), aperture.x(), aperture.y(), GL_DEPTH_COMPONENT,
-							 GL_FLOAT, depthBuffer.get());
-
-    //QImage image = framebuffer->toImage();
-    //image.save("image.jpg");	
-
-	glMatrixMode(GL_PROJECTION); // select the project matrix stack
-	glPopMatrix();               // pop the previous project matrix
-
-	glMatrixMode(GL_MODELVIEW); // select the project matrix stack
-	glPopMatrix();              // pop the previous modelview matrix
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
 
 	glPopAttrib();
 	glFinish();
 
-	framebuffer->release();
+	GLdouble x, y, z = 1.0;
+	const double screenCenterX = static_cast<double>(viewport[2] / 2);
+	const double screenCenterY = static_cast<double>(viewport[3] / 2);
 
-#if DumpHitBuffer
-	std::vector<RGBQUAD> bits;
-	// calculate size and align to a DWORD , we are assuming there is only one plane.
-	size_t size = (static_cast<int>(aperture.x() * (sizeof(RGBQUAD) * 8) + 31) & -31) * aperture.y();
-	bits.resize(size);
+	for(auto &sample : samplingPattern) {
 
-	double nearD = 0.1 * cam.zoomValue();
-	double farD = 100 * cam.zoomValue();
-	for (int j = 0; j < bufferSize; ++j) {
-		// Linearize the depthbuffer
-		float ndc = depthBuffer[j] * 2 -1;
-		float linearDepth = (2.0 * nearD * farD) / (farD + nearD - ndc * (farD - nearD));
-		BYTE c = static_cast<BYTE>(255.0 * (1.0 - linearDepth / farD));
-		bits[j] = {c,c,c,0xff};
-	}
+		double sampleX = screenCenterX + sample.x() * aperture;
+		double sampleY = screenCenterY - sample.y() * aperture;
+		float sampleZ;
 
-	SaveAsBitmap(L"GetZBufferDepth.bmp", aperture.x(), aperture.y(), bits);
-#endif
-	
-	int i, pos = 0;
-	GLfloat depth = depthBuffer[pos];
+		glReadPixels(sampleX, sampleY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &sampleZ);
 
-	for (i = 1; i < bufferSize; ++i) {
-		if (depthBuffer[i] < depth) {
-			pos = i;
-			depth = depthBuffer[pos];
+		if((sampleZ < z) && (sampleZ > 0.0001)) {
+			z = sampleZ;
+			x = sampleX;
+			y = sampleY;
 		}
 	}
 
-	if(depth == 1.0){
-		return cam.zoomValue() * 100.0;
-	}
-	else if(depth == 0.0){
-		return depth;
-	}
+	framebuffer->release();
 
-	size_t y = pos / aperture.x();
-	size_t x = pos - y * aperture.x();
-	GLdouble objx, objy, objz;
-	gluUnProject(static_cast<GLdouble>(readPoint.x() + x), static_cast<GLdouble>(readPoint.y() + y),
-							 static_cast<GLdouble>(depth), modelMatrix, projectionMatrix, viewport,
-							 &objx, &objy, &objz);
-	Eigen::Vector3d hit(
-			{static_cast<double>(objx), static_cast<double>(objy), static_cast<double>(objz)});
+	if(z == 1.0) {
+		return Eigen::Vector3d(z, z, std::numeric_limits<double>::max());
+	}
+		
+	gluUnProject(x, y, z, modelMatrix, projectionMatrix, viewport, &x, &y, &z);
 
-	return (hit - position).dot(direction);
+	return Eigen::Vector3d(x, y, z);
 }
 
+Eigen::Vector3d getCursorInWorld(const QGLView *const pQGLView, uint32_t cursorX, uint32_t cursorY) {
 
-Eigen::Vector3d getCursorInWorld(QGLView *const pQGLView, uint32_t cursorX, uint32_t cursorY) {
-
-	Camera &cam = pQGLView->cam;
-	GLint viewport[4] = {0, 0, static_cast<GLint>(cam.pixel_width), static_cast<GLint>(cam.pixel_height)};
+	const Camera &cam = pQGLView->cam;
+	const GLint viewport[4] = {
+		0,
+		0,
+		static_cast<GLint>(cam.pixel_width),
+		static_cast<GLint>(cam.pixel_height)};
 	
 	GLdouble projectionMatrix[16];
 	pQGLView->getCurrentProjection(projectionMatrix);
@@ -423,3 +257,4 @@ Eigen::Vector3d getCursorInWorld(QGLView *const pQGLView, uint32_t cursorX, uint
 
 	return Eigen::Vector3d(x, y, z);
 }
+

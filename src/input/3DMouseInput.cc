@@ -41,6 +41,25 @@ TDMouseInput::TDMouseInput(QGLView *pQGLView_ , bool multiThreaded, bool rowMajo
   	QString pivotIconPath = QCoreApplication::applicationDirPath();
   	pivotIconPath.append("/resources/icons/3dx_pivot.png");
   	pQGLView->setPivotIcon(pivotIconPath);
+
+	samplingPattern.resize(sampleCount);
+
+	if (sampleCount > 0) {
+    samplingPattern.at(0)[0] = 0.0;
+    samplingPattern.at(0)[1] = 0.0;
+  }
+
+  for (uint32_t i = 1; i < sampleCount; i++) {
+    float coefficient =
+      sqrt(static_cast<float>(i) / static_cast<float>(sampleCount));
+    float angle = 2.4f * static_cast<float>(i);
+    float x = coefficient * sin(angle);
+    float y = coefficient * cos(angle);
+    samplingPattern.at(i)[0] = x;
+    samplingPattern.at(i)[1] = y;
+  }
+
+
 }
 
 TDMouseInput::~TDMouseInput()

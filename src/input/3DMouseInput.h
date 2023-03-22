@@ -39,6 +39,8 @@
 #include <SpaceMouse/CNavigation3D.hpp>
 #include "degree_trig.h"
 
+constexpr uint32_t sampleCount = 30;
+
 static inline double rad2deg(double x)
 {
 	return x * M_RAD2DEG;
@@ -65,6 +67,7 @@ private:
 	double hitAperture_;
 	bool hitSelectionOnly_;
 	QGLView *pQGLView;
+	std::vector<Eigen::Vector2d> samplingPattern;
 
 public:
 	TDMouseInput(QGLView *pQGLView_, bool multiThreaded = false, bool rowMajor = false);
