@@ -31,24 +31,16 @@
 #include <QBuffer>
 #include <QResource>
 
-template<class T>
-std::string ptrToStr(T* a){
-	const void * address = static_cast<const void*>(a);
-	std::stringstream ss;
-	ss << address;  
-	return ss.str(); 
-}
 
 QActionCommand::QActionCommand(QAction *action, std::string const &rpath)
 	: qaction_(action), rpath_(rpath)
 {
+	
 }
 
 TDx::CImage QActionCommand::GetCImage() const
 {
-	QResource open_res(QString::fromStdString(rpath_));
-	QByteArray open_res_arr(reinterpret_cast<const char *>(open_res.data()), int(open_res.size()));
-	return TDx::CImage::FromData(open_res_arr.toStdString(), 0, ptrToStr(qaction_).c_str());
+	return TDx::CImage::FromFile(rpath_, 0, qaction_->objectName().toStdString().c_str());
 }
 
 bool QActionCommand::HasImage() const
@@ -73,7 +65,7 @@ std::string QActionCommand::Description() const
 
 TDx::SpaceMouse::CCommand QActionCommand::MakeCommand() const
 {
-	return TDx::SpaceMouse::CCommand(ptrToStr(qaction_), Text(), Description());
+	return TDx::SpaceMouse::CCommand(qaction_->objectName().toStdString(), Text(), Description());
 }
 
 void QActionCommand::Run()
@@ -88,16 +80,17 @@ void AddQAction(std::unordered_map<std::string, std::shared_ptr<QActionCommand>>
 								std::string const &image = "")
 {
 	// defaut path for qt resource
-	static const std::string base = ":/resources/icons/svg-default/";
+	static const std::string iconsPath = QCoreApplication::applicationDirPath().toStdString().append("/resources/icons/");
+
 	// no already added
-	assert(map.find(ptrToStr(a)) == map.end()); 
+	assert(map.find(a->objectName().toStdString()) == map.end()); 
 	if (image == "") {
 		v.push_back(std::make_shared<QActionCommand>(a, ""));
 	}
 	else {
-		v.push_back(std::make_shared<QActionCommand>(a, base + image));
+		v.push_back(std::make_shared<QActionCommand>(a, iconsPath + image));
 	}
-	map[ptrToStr(a)] = v.back();
+	map[a->objectName().toStdString()] = v.back();
 }
 
 void QActionsHandler::ExportApplicationCmds(TDx::SpaceMouse::Navigation3D::CNavigation3D *nav)
@@ -132,7 +125,6 @@ void QActionsHandler::ExportApplicationCmds(TDx::SpaceMouse::Navigation3D::CNavi
 	AddQAction(idToAction_, cmds_, win_->viewActionPerspective, "perspective.svg");
 	AddQAction(idToAction_, cmds_, win_->viewActionOrthogonal, "orthogonal.svg");
 	AddQAction(idToAction_, cmds_, win_->designActionPreview, "preview.svg");
-	//AddQAction(idToAction_, cmds_, win_->viewActionAnimate, "animate.svg");
 	AddQAction(idToAction_, cmds_, win_->fileActionExportSTL, "export-stl.svg");
 	AddQAction(idToAction_, cmds_, win_->fileActionExportAMF, "export-amf.svg");
 	AddQAction(idToAction_, cmds_, win_->fileActionExport3MF, "export-3mf.svg");
@@ -210,6 +202,26 @@ void QActionsHandler::ExportApplicationCmds(TDx::SpaceMouse::Navigation3D::CNavi
 	AddQAction(idToAction_, cmds_, win_->editActionInsertTemplate);
 	AddQAction(idToAction_, cmds_, win_->helpActionManual);
 
+	auto animateActions = win_->animateWidget->actions();
+
+	AddQAction(idToAction_, cmds_, animateActions[0], "animate.svg");
+	AddQAction(idToAction_, cmds_, animateActions[1], "vcr-control-start.svg");
+	AddQAction(idToAction_, cmds_, animateActions[2], "vcr-control-step-back.svg");
+	AddQAction(idToAction_, cmds_, animateActions[3], "vcr-control-play.svg");
+	AddQAction(idToAction_, cmds_, animateActions[4], "vcr-control-pause.svg");
+	AddQAction(idToAction_, cmds_, animateActions[5], "vcr-control-step-forward.svg");
+	AddQAction(idToAction_, cmds_, animateActions[6], "vcr-control-end.svg");
+
+	const std::array<std::string, 7> animateLabels{
+		"Toggle pause",
+		"Start",
+		"Step backward",
+		"Play",
+		"Pause",
+		"Step forward",
+		"End"
+	};
+
 	using TDx::SpaceMouse::CCommandSet;
 	CCommandSet menuBar("Default", "OpenSCAD");
 	std::vector<QMenu *> menus = {win_->menu_File,  win_->menuOpenRecent, win_->menuExamples,
@@ -220,23 +232,35 @@ void QActionsHandler::ExportApplicationCmds(TDx::SpaceMouse::Navigation3D::CNavi
 		qmenu_str.erase(std::remove(qmenu_str.begin(), qmenu_str.end(), '&'), qmenu_str.end());
 		TDx::SpaceMouse::CCategory menu(qmenu_str, qmenu_str);
 		for (auto a : qmenu->actions()) {
-			auto cmd = ptrToStr(a);
+			auto cmd = a->objectName().toStdString();
 			if (idToAction_.find(cmd) != idToAction_.end()) {
 				menu.push_back(idToAction_[cmd]->MakeCommand());
 			}
 		}
 		menuBar.push_back(std::move(menu));
 	}
+
+	TDx::SpaceMouse::CCategory menu("Animate", "Animate");
+	
+	for(uint32_t itr = 0u; auto action : animateActions) {
+		std::string id = action->objectName().toStdString();
+		std::string description = action->whatsThis().toStdString();
+		menu.push_back(TDx::SpaceMouse::CCommand(id, animateLabels[itr], description));
+		itr++;
+	}
+
+	menuBar.push_back(std::move(menu));
+
 	nav->AddCommandSet(menuBar);
 	nav->PutActiveCommands(menuBar.GetId());
 
 	std::vector<TDx::CImage> images;
 	for (auto &it : idToAction_) {
-		if (it.second->HasImage()) {
-			images.push_back(it.second->GetCImage());
-		}
-	}
-	nav->AddImages(images);
+	 	if (it.second->HasImage()) {
+	 		images.push_back(it.second->GetCImage());
+	 	}
+	 }
+	 nav->AddImages(images);
 }
 
 void QActionsHandler::SetActiveCmd(std::string const &cmd)

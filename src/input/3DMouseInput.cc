@@ -26,8 +26,19 @@
 #include <QtCore/QCoreApplication>
 #include "3DMouseInput.h"
 #include "QGLView.h"
+#include "degree_trig.h"
 
 #include <algorithm>
+
+static inline double rad2deg(double x)
+{
+	return x * M_RAD2DEG;
+}
+
+static inline double deg2rad(double x)
+{
+	return x * M_DEG2RAD;
+}
 
 constexpr double MIN_ZOOM = 1 ;
 constexpr std::size_t MATRIX_SIZE = 16 * sizeof(double);

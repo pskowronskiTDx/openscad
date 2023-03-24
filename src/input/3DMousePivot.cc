@@ -27,17 +27,6 @@
 #include "OpenGlUtils.h"
 #include "QGLView.h"
 
-Eigen::Vector3d TransformVGet(Eigen::Vector3d const &p, Eigen::Matrix4d const& transformation)
-{
-	return (p.transpose() * transformation.block<3, 3>(0, 0)).eval();
-}
-
-Eigen::Vector3d TransformVSet(Eigen::Vector3d const &p, Eigen::Matrix4d const& transformation)
-{
-	return TransformVGet(p, transformation.inverse());
-}
-
-
 long TDMouseInput::GetPivotPosition(navlib::point_t &p) const
 {	
 	std::memcpy(&p.x, pQGLView->getPivotPosition().data(), sizeof(double) * 3u);

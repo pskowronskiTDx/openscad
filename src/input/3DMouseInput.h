@@ -37,20 +37,9 @@
 #undef DIFFERENCE //#defined in winuser.h
 #endif
 #include <SpaceMouse/CNavigation3D.hpp>
-#include "degree_trig.h"
 
 constexpr uint32_t sampleCount = 30;
 
-static inline double rad2deg(double x)
-{
-	return x * M_RAD2DEG;
-}
-
-static inline double deg2rad(double x)
-{
-	return x * M_DEG2RAD;
-}
- 
 class QGLView;
 
 class TDMouseInput : public TDx::SpaceMouse::Navigation3D::CNavigation3D
