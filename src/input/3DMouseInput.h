@@ -26,7 +26,6 @@
 #pragma once
 
 #include <unordered_map>
-#include <condition_variable>
 #include <Eigen/Dense>
 #include "linalg.h"
 #include "Camera.h"
@@ -38,32 +37,39 @@
 #endif
 #include <SpaceMouse/CNavigation3D.hpp>
 
+using CNav3D = TDx::SpaceMouse::Navigation3D::CNavigation3D;
+using TDxCommand = TDx::SpaceMouse::CCommand;
+using TDxImage = TDx::CImage;
+using TDxCategory = TDx::SpaceMouse::CCategory;
+
 constexpr uint32_t sampleCount = 30;
 
 class QGLView;
+class QAction;
+class MainWindow;
 
-class TDMouseInput : public TDx::SpaceMouse::Navigation3D::CNavigation3D
+class TDMouseInput : public CNav3D
 {
-private:
-	bool m_exit_ = false;
-	std::shared_ptr<std::mutex> m_cv_m_;
-	std::shared_ptr<std::condition_variable> m_cv_;
-	// to run cmds (avoid coupling with gui)
-	std::function<void(std::string)> onActiveCommand_;
-	
-	Eigen::Vector3d hitDirection_;
-	Eigen::Vector3d hitLookFrom_;
-	double hitAperture_;
-	bool hitSelectionOnly_;
-	QGLView *pQGLView;
-	std::vector<Eigen::Vector2d> samplingPattern;
-
 public:
-	TDMouseInput(QGLView *pQGLView_, bool multiThreaded = false, bool rowMajor = false);
+	TDMouseInput(MainWindow *const p_window, bool multi_threaded = false, bool row_major = false);
 	~TDMouseInput();
-	void Run();
-	bool Open3DxWare();
-	void Close3DxWare();
+	bool enableNavigation();
+	void disableNavigation();
+	void exportCommands();
+
+private:
+
+	class Command {	
+	public:	
+		Command() = default;
+		Command(QAction *const p_qaction, const std::string &icon_file_name);
+		TDxCommand toCCommand() const;
+		TDxImage getCImage() const; 
+		void run();
+	private:
+		QAction *m_p_qaction{nullptr};
+		const std::string m_icon_path{""};
+	};
 
 	long GetCoordinateSystem(navlib::matrix_t &matrix) const override;
 	long GetCameraMatrix(navlib::matrix_t &) const override;
@@ -77,32 +83,35 @@ public:
 	long GetPivotPosition(navlib::point_t &) const override;
 	long GetHitLookAt(navlib::point_t &) const override;
 	long GetPivotVisible(navlib::bool_t &) const override;
-	long GetSelectionTransform(navlib::matrix_t &) const override
-	{
-		return navlib::make_result_code(navlib::navlib_errc::no_data_available);
-	}
-	long GetSelectionExtents(navlib::box_t &) const override
-	{
-		return navlib::make_result_code(navlib::navlib_errc::no_data_available);
-	}
+	long GetSelectionTransform(navlib::matrix_t &) const override;
+	long GetSelectionExtents(navlib::box_t &) const override;
 	long GetPointerPosition(navlib::point_t &) const override;
-
 
 	long SetCameraMatrix(const navlib::matrix_t &) override;
 	long SetViewFOV(double) override;
 	long SetViewExtents(const navlib::box_t &) override;
 	long SetViewFrustum(const navlib::frustum_t &) override;
-	long IsUserPivot(navlib::bool_t &) const override;
 	long SetPivotPosition(const navlib::point_t &) override;
 	long SetHitAperture(double);
 	long SetHitDirection(const navlib::vector_t &) override;
 	long SetHitSelectionOnly(bool) override;
 	long SetHitLookFrom(const navlib::point_t &) override;
 	long SetPivotVisible(bool) override;
-	long SetSelectionTransform(const navlib::matrix_t &) override
-	{
-		return navlib::make_result_code(navlib::navlib_errc::no_data_available);
-	}
+	long SetSelectionTransform(const navlib::matrix_t &) override;
 	long SetActiveCommand(std::string) override;
-	void SetCommandHandler(std::function<void(std::string)> f);
+	long IsUserPivot(navlib::bool_t &) const override;
+
+	void registerCommand(QAction *p_qaction, const std::string &icon_file_name);
+	void initializeCommandsMap();
+	void initializeSampling();
+	inline bool checkQGLView() const;
+	TDxCategory getAnimateCategory();
+
+	MainWindow *m_p_main_window;
+	std::unordered_map<std::string, Command> m_id_to_command;
+	Eigen::Vector3d m_hit_direction;
+	Eigen::Vector3d m_hit_look_from;
+	double m_hit_aperture;
+	std::vector<Eigen::Vector2d> m_sampling_pattern;
+
 };

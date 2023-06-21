@@ -25,11 +25,11 @@
  */
 #include "3DMouseInput.h"
 #include "OpenGlUtils.h"
-#include "QGLView.h"
+#include "MainWindow.h"
 
 long TDMouseInput::GetPivotPosition(navlib::point_t &p) const
 {	
-	std::memcpy(&p.x, pQGLView->getPivotPosition().data(), sizeof(double) * 3u);
+	std::memcpy(&p.x, m_p_main_window->qglview->getPivotPosition().data(), sizeof(double) * 3u);
 	return 0;
 }
 
@@ -41,14 +41,19 @@ long TDMouseInput::IsUserPivot(navlib::bool_t &p) const
 
 long TDMouseInput::SetPivotPosition(const navlib::point_t &p)
 {
-	pQGLView->setPivotPosition({p.x, p.y, p.z});
+	m_p_main_window->qglview->setPivotPosition({p.x, p.y, p.z});
 	return 0;
 }
 
 long TDMouseInput::GetHitLookAt(navlib::point_t &p) const
 {	
-	Eigen::Vector3d hit = getHitPoint(pQGLView, samplingPattern, hitAperture_, hitDirection_, hitLookFrom_);
-		
+	QOpenGLContext *oldContext = getGLContext();
+	m_p_main_window->qglview->makeCurrent();
+
+	Eigen::Vector3d hit = getHitPoint(m_p_main_window->qglview, m_sampling_pattern, m_hit_aperture, m_hit_direction, m_hit_look_from);
+	
+	setGLContext(oldContext);
+
 	if(hit.z() == std::numeric_limits<double>::max())
 		return navlib::make_result_code(navlib::navlib_errc::no_data_available);
 	
@@ -62,36 +67,36 @@ long TDMouseInput::GetHitLookAt(navlib::point_t &p) const
 
 long TDMouseInput::SetHitAperture(double hitAperture)
 {
-	hitAperture_ = hitAperture;
+	m_hit_aperture = hitAperture;
 	return 0;
 }
 
 long TDMouseInput::SetHitDirection(const navlib::vector_t &hitDir)
 {
-	std::memcpy(hitDirection_.data(), &hitDir.x, sizeof(double) * hitDirection_.size());
+	std::memcpy(m_hit_direction.data(), &hitDir.x, sizeof(double) * m_hit_direction.size());
 	return 0;
 }
 
 long TDMouseInput::SetHitSelectionOnly(bool hso)
 {
-	hitSelectionOnly_ = hso;
-	return 0;
+	return navlib::make_result_code(navlib::navlib_errc::no_data_available);
 }
 
 long TDMouseInput::SetHitLookFrom(const navlib::point_t &hitLookFrom)
 {
-	std::memcpy(hitLookFrom_.data(), &hitLookFrom.x, sizeof(double) * hitLookFrom_.size());
+	std::memcpy(m_hit_look_from.data(), &hitLookFrom.x, sizeof(double) * m_hit_look_from.size());
 	return 0;
 }
 
 long TDMouseInput::GetPivotVisible(navlib::bool_t &v) const
 {
-	v = pQGLView->getPivotVisibility();
+	v = m_p_main_window->qglview->getPivotVisibility();
 	return 0;
 }
 long TDMouseInput::SetPivotVisible(bool v)
 {
-	pQGLView->setPivotVisibility(v);
+	m_p_main_window->qglview->setPivotVisibility(v);
+	m_p_main_window->qglview->repaint();
 	return 0;
 }
 
@@ -99,10 +104,17 @@ long TDMouseInput::SetPivotVisible(bool v)
 long TDMouseInput::GetPointerPosition(navlib::point_t & p) const {
 
 	QPoint cursorPosition = QCursor::pos();
-	cursorPosition = pQGLView->mapFromGlobal(cursorPosition);
 
-	Eigen::Vector3d cursorCoordinates = getCursorInWorld(pQGLView, cursorPosition.x(), cursorPosition.y());
+	QOpenGLContext *oldContext = getGLContext();
+	m_p_main_window->qglview->makeCurrent();
+
+	cursorPosition = m_p_main_window->qglview->mapFromGlobal(cursorPosition);
+	Eigen::Vector3d cursorCoordinates = getCursorInWorld(m_p_main_window->qglview, cursorPosition.x(), cursorPosition.y());
+
+	setGLContext(oldContext);
+
 	std::memcpy(&p.x, cursorCoordinates.data(), cursorCoordinates.size() * sizeof(double));
+
 
 	return 0;
 }

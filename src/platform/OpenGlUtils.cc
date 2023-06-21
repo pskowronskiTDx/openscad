@@ -17,12 +17,17 @@
 
 // Helper functions (visibility limited to the translation unit)
 
-uint32_t projectAperture(const Camera &camera, const double &aperture) {
-	const double shortestSidePx = static_cast<double>(std::min(camera.pixel_height, camera.pixel_width));
-	const double frustumHeight = camera.getFrustum().top - camera.getFrustum().bottom;
-	const double frustumWidth = camera.getFrustum().right - camera.getFrustum().left;
-	const double shortestSideWorld = std::min(frustumHeight, frustumWidth);
-	return static_cast<uint32_t>((shortestSidePx * aperture) / shortestSideWorld);
+double projectAperture(const Camera &camera, const double &aperture)
+{
+	Camera::Frustum frustum = camera.getFrustum();
+	double result = (aperture * static_cast<double>(camera.pixel_width)) / (frustum.right - frustum.left);
+
+	if(camera.getProjection() == Camera::ProjectionType::PERSPECTIVE) {
+		const double nf = 0.01 / frustum.nearVal;
+		result /= nf;
+	}
+
+	return result;
 }
 
 void glModelView(Camera const &camera, const Eigen::Vector3d &lookdir, const Eigen::Vector3d &lookfrom)
@@ -33,7 +38,6 @@ void glModelView(Camera const &camera, const Eigen::Vector3d &lookdir, const Eig
 	const Eigen::Vector3d up(affine(0,1), affine(1,1), affine(2,1));
 
 	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
 	glLoadIdentity();
 	gluLookAt(lookfrom[0], lookfrom[1], lookfrom[2],
 			  lookAt[0], lookAt[1], lookAt[2],		// center
@@ -45,7 +49,6 @@ void glPickInit(Camera const &cam, const double &aperture)
 	glClearColor(0, 0, 0, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glPushAttrib(GL_ENABLE_BIT);
 	glDisable(GL_LIGHTING);
 
 	glEnable(GL_DEPTH_TEST);
@@ -53,24 +56,21 @@ void glPickInit(Camera const &cam, const double &aperture)
 	glDepthFunc(GL_LESS);
 
 	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
 	glLoadIdentity();
 
 	GLint viewport[4];
 	glGetIntegerv(GL_VIEWPORT, viewport);
-	gluPickMatrix(viewport[2] / 2.0, viewport[3]/ 2.0, aperture, aperture, viewport);
-
-	const double dist = cam.zoomValue();
-	const double aspectratio = static_cast<double>(viewport[2]) / static_cast<double>(viewport[3]);
+	const auto frustum = cam.getFrustum();
 
 	switch (cam.projection) {
+		gluPickMatrix(viewport[2] / 2.0, viewport[3]/ 2.0, aperture, aperture, viewport);
 	case Camera::ProjectionType::PERSPECTIVE: {
-		gluPerspective(cam.fov, aspectratio, 0.1 * dist, 100 * dist);
+		const double aspectratio = (frustum.right - frustum.left) / (frustum.top - frustum.bottom);
+		gluPerspective(cam.fov, aspectratio, frustum.nearVal, frustum.farVal);
 		break;
 	} 
 	case Camera::ProjectionType::ORTHOGONAL: {
-		const double height = dist * tan_degrees(cam.fov / 2.0);
-		glOrtho(-height * aspectratio, height * aspectratio, -height, height, -100.0 * dist, 100.0 * dist);
+		glOrtho(frustum.left, frustum.right, frustum.bottom, frustum.top, 0, frustum.farVal -frustum.nearVal);
 		break;
 	}
 	default:
@@ -161,14 +161,17 @@ Eigen::Vector3d getHitPoint(QGLView *const pQGLView,
 							const Eigen::Vector3d &lookDirection,
 							const Eigen::Vector3d &lookFrom)
 {
+	if(pQGLView->renderer == nullptr)
+		return Vector3d();
+
 	const Renderer::shaderinfo_t shaderInfo = createShaderInfo("MouseSelector.vert", "MouseSelector.frag");
 
 	pQGLView->renderer->prepare(true, false, &shaderInfo);
 
 	QOpenGLFramebufferObjectFormat fboFormat;
-	fboFormat.setSamples(0);	
+	fboFormat.setSamples(0);
 	fboFormat.setAttachment(QOpenGLFramebufferObject::Depth);
-	
+
 	const GLint viewport[4] = {
 		0,
 		0, 

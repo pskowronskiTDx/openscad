@@ -88,7 +88,12 @@ void Camera::setDistance(double distance)
 	this->viewer_distance = distance;
 }
 
-Camera::ProjectionType Camera::GetProjection() const
+void Camera::scaleDistance(double scale)
+{
+	this->viewer_distance *= scale;
+}
+
+Camera::ProjectionType Camera::getProjection() const
 {
 	return this->projection;
 }

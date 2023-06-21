@@ -35,6 +35,7 @@ public:
 	void setProjection(ProjectionType type);
 	void zoom(int delta, bool relative);
 	void setDistance(double distance);
+	void scaleDistance(double scale);
   [[nodiscard]] double zoomValue() const;
   [[nodiscard]] double fovValue() const;
 	void resetView();
@@ -57,7 +58,6 @@ public:
 	// Perspective settings
 	double fov; // Field of view
 
-	ProjectionType GetProjection() const;
 	void setFrustum(Camera::Frustum const &);
 
 	// true if camera should try to view everything in a given
@@ -75,6 +75,7 @@ public:
 	// (--camera option in commandline mode)
 	bool locked;
 
+	ProjectionType getProjection() const;
 	Camera::Frustum getFrustum() const;
 	Eigen::Affine3d getViewMatrix() const;
 	Eigen::Affine3d getModelMatrix() const;

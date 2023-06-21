@@ -357,14 +357,17 @@ if( WIN32 OR APPLE )
       include_directories($<TARGET_PROPERTY:3DxWare::Navlib,INTERFACE_INCLUDE_DIRECTORIES>)
       list(APPEND COMMON_LIBRARIES $<TARGET_PROPERTY:3DxWare::Navlib,INTERFACE_LINK_LIBRARIES>)
       set(3DCONNEXION_NAVLIB_SOURCES src/input/3DMouseInput.cc src/input/3DMousePivot.cc) 
-      set(3DCONNEXION_NAVLIB_GUI_SOURCES src/input/3DMouseCmd.cc) 
 	    set(OPENGL_UTILS_SOURCE src/platform/OpenGlUtils.cc)
       add_definitions(-DENABLE_SPACEMOUSEPRO)
-	  target_link_libraries(OpenSCAD PRIVATE $<TARGET_PROPERTY:3DxWare::Navlib,INTERFACE_LINK_LIBRARIES>)
+	    target_link_libraries(OpenSCAD PRIVATE $<TARGET_PROPERTY:3DxWare::Navlib,INTERFACE_LINK_LIBRARIES>)
+      file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/3dx_pivot.png DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/icons)   
+      if(WIN32)
+        file(GLOB SVG_IMAGES ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/svg-default/*.svg)
+        file(COPY ${SVG_IMAGES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/icons)
+      endif()
     else()
       message(STATUS "TDxWare_SDK: disabled")
     endif()
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/3dx_pivot.png DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/icons)
   endif()
 elseif(LINUX)
   message(warning "Navlib is not supported on linux")
@@ -710,7 +713,6 @@ set(CORE_SOURCES
   ${FLEX_comment_lexer_OUTPUTS}
   ${BISON_comment_parser_OUTPUTS}
   ${3DCONNEXION_NAVLIB_SOURCES}
-  ${3DCONNEXION_NAVLIB_GUI_SOURCES}
   ${OPENGL_UTILS_SOURCE}
   )
 
