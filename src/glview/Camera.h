@@ -2,19 +2,19 @@
 
 /*
 
-   Camera
+Camera
 
-   For usage, see QGLView.cc, GLView.cc, export_png.cc, openscad.cc
+For usage, see QGLView.cc, GLView.cc, export_png.cc, openscad.cc
 
-   There are two different types of cameras represented in this class:
+There are two different types of cameras represented in this class:
 
  * Gimbal camera - uses Euler Angles, object translation, and viewer distance
  * Vector camera - uses 'eye', 'center', and 'up' vectors ('lookat' style)
 
-   They are not necessarily kept in sync. There are two modes of
-   projection, Perspective and Orthogonal.
+They are not necessarily kept in sync. There are two modes of
+projection, Perspective and Orthogonal.
 
- */
+*/
 
 #include "linalg.h"
 #include "ScopeContext.h"
@@ -25,6 +25,9 @@ class Camera
 {
 public:
   enum class ProjectionType { ORTHOGONAL, PERSPECTIVE } projection{ProjectionType::PERSPECTIVE};
+  struct Frustum {
+    double left, right, bottom, top, nearVal, farVal;
+  };
   Camera();
   void setup(std::vector<double> params);
   void gimbalDefaultTranslate();
@@ -36,6 +39,13 @@ public:
   void updateView(const std::shared_ptr<const class FileContext>& context, bool enableWarning);
   void viewAll(const BoundingBox& bbox);
   [[nodiscard]] std::string statusText() const;
+  void scaleDistance(double scale);
+  ProjectionType getProjection() const;
+  Camera::Frustum getFrustum() const;
+  Eigen::Affine3d getViewMatrix() const;
+  Eigen::Affine3d getModelMatrix() const;
+  Eigen::Affine3d getAffine() const;
+  bool setAffine(const Eigen::Matrix4d &m);
 
   // accessors to get and set camera settings in the user space format (different for historical reasons)
   [[nodiscard]] Eigen::Vector3d getVpt() const;

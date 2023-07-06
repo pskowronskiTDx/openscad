@@ -70,6 +70,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/optional.hpp>
 
+#include "3Dconnexion/3DMouseInput.h"
+
 #ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
@@ -785,7 +787,7 @@ int gui(vector<string>& inputFiles, const fs::path& original_path, int argc, cha
   for (const auto& infile: inputFiles) {
     inputFilesList.append(assemblePath(original_path, infile));
   }
-  new MainWindow(inputFilesList);
+  auto mainWindow = new MainWindow(inputFilesList);
   app.connect(&app, SIGNAL(lastWindowClosed()), &app, SLOT(releaseQSettingsCached()));
   app.connect(&app, SIGNAL(lastWindowClosed()), &app, SLOT(quit()));
 
@@ -824,6 +826,11 @@ int gui(vector<string>& inputFiles, const fs::path& original_path, int argc, cha
       InputDriverManager::instance()->registerDriver(dBusDriver);
     }
   }
+#endif
+#ifdef ENABLE_3DCONNEXION_NAVLIB
+	TDMouseInput spaceMouse(mainWindow);
+	spaceMouse.enableNavigation();
+	spaceMouse.exportCommands();
 #endif
 
   InputDriverManager::instance()->init();
