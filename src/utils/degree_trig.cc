@@ -33,12 +33,12 @@
 
 #include "degree_trig.h"
 
-static inline double rad2deg(double x)
+double rad2deg(double x)
 {
   return x * M_RAD2DEG;
 }
 
-static inline double deg2rad(double x)
+double deg2rad(double x)
 {
   return x * M_DEG2RAD;
 }
@@ -226,4 +226,12 @@ Matrix3d rotate_degrees(double angle)
     s,  c,  0,
     0,  0,  1;
   return m;
+}
+
+void normalizeAngle(double &angle)
+{
+  while (angle < 0)
+    angle += 360;
+  while (angle > 360)
+    angle -= 360;
 }

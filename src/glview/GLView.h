@@ -2,20 +2,22 @@
 
 /* GLView: A basic OpenGL rectangle for rendering images.
 
-   This class is inherited by:
+This class is inherited by:
 
  * QGLview - for Qt GUI
  * OffscreenView - for offscreen rendering, in tests and from command-line
-   (This class is also overridden by NULLGL.cc for special experiments)
+(This class is also overridden by NULLGL.cc for special experiments)
 
-   The view assumes either a Gimbal Camera (rotation,translation,distance)
-   or Vector Camera (eye,center/target) is being used. See Camera.h. The
-   cameras are not kept in sync.
+The view assumes either a Gimbal Camera (rotation,translation,distance)
+or Vector Camera (eye,center/target) is being used. See Camera.h. The
+cameras are not kept in sync.
 
-   QGLView only uses GimbalCamera while OffscreenView can use either one.
-   Some actions (showCrossHairs) only work properly on Gimbal Camera.
+QGLView only uses GimbalCamera while OffscreenView can use either one.
+Some actions (showCrossHairs) only work properly on Gimbal Camera.
 
- */
+*/
+#include <QImage>
+#include <QString>
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -58,7 +60,13 @@ public:
   virtual float getDPI() { return 1.0f; }
 
   virtual ~GLView() = default;
-
+  void setPivotPosition(const Eigen::Vector3d &position);
+  void setPivotIcon(const QString &iconPath);
+  void setPivotVisibility(bool isVisible);
+  bool getPivotVisibility() const;
+  Eigen::Vector3d getPivotPosition() const;
+  void getCurrentProjection(double out[16]) const;
+  
   Renderer *renderer;
   const ColorScheme *colorscheme;
   Camera cam;
@@ -83,4 +91,11 @@ private:
   void showSmallaxes(const Color4f& col);
   void showScalemarkers(const Color4f& col);
   void decodeMarkerValue(double i, double l, int size_div_sm);
+  void drawPivot();
+  struct {
+    Eigen::Vector3d position{0};
+    bool isVisible = false;
+    QImage icon;
+  } pivot;
+  mutable double currentProjection[16];
 };

@@ -8,6 +8,12 @@
 #include <cmath>
 #include <cstdio>
 
+#ifdef _WIN32
+#include <GL/wglew.h>
+#elif !defined(__APPLE__)
+#include <GL/glxew.h>
+#endif
+
 #ifdef ENABLE_OPENCSG
 #include <opencsg.h>
 #endif
@@ -168,6 +174,10 @@ void GLView::paintGL()
 #endif
     this->renderer->prepare(showfaces, showedges);
     this->renderer->draw(showfaces, showedges);
+  }
+
+  if(pivot.isVisible && !pivot.icon.isNull()){
+	  drawPivot();
   }
 
   glDisable(GL_LIGHTING);
@@ -732,4 +742,53 @@ void GLView::decodeMarkerValue(double i, double l, int size_div_sm)
       }
     }
   }
+}
+
+void GLView::setPivotPosition(const Eigen::Vector3d &position)
+{
+  pivot.position = position;
+}
+
+void GLView::setPivotIcon(const QString &iconPath)
+{
+  pivot.icon.load(iconPath);
+}
+
+void GLView::setPivotVisibility(bool isVisible)
+{
+  pivot.isVisible = isVisible;
+}
+
+bool GLView::getPivotVisibility() const
+{
+  return pivot.isVisible;
+}
+
+Eigen::Vector3d GLView::getPivotPosition() const 
+{
+  return pivot.position;
+}
+
+void GLView::getCurrentProjection(double out[16]) const
+{
+  memcpy(out, currentProjection, 16u * sizeof(double));
+  return;
+}
+
+void GLView::drawPivot(){
+  glDisable(GL_DEPTH_TEST);
+	glPushMatrix();
+	glRasterPos3d(pivot.position.x(), pivot.position.y(), pivot.position.z());
+  glPixelZoom(1.0f, -1.0f);
+    glBitmap(0.0f, 
+			 0.0f, 
+			 0.0f,
+			 0.0f, 
+			 -static_cast<float>(pivot.icon.width() >> 1),
+			 static_cast<float>(pivot.icon.height() >> 1), 
+			 NULL);
+	
+	glDrawPixels(pivot.icon.width(), pivot.icon.height(), GL_BGRA_EXT, GL_UNSIGNED_BYTE, pivot.icon.bits());
+	glPopMatrix();	
+  glEnable(GL_DEPTH_TEST);
 }

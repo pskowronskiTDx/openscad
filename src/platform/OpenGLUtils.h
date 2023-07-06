@@ -1,6 +1,6 @@
 /*
  *  OpenSCAD (www.openscad.org)
- *  Copyright (C) 2009-2011 Clifford Wolf <clifford@clifford.at> and
+ *  Copyright (C) 2009-2015 Clifford Wolf <clifford@clifford.at> and
  *                          Marius Kintel <marius@kintel.net>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -23,29 +23,17 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-//
-// Trigonometry function taking degrees, accurate for 30, 45, 60 and 90, etc.
-//
+
 #pragma once
-#include "linalg.h"
 
-constexpr double M_SQRT3 = 1.73205080756887719318;    /* sqrt(3)   */
-constexpr double M_SQRT3_4 = 0.86602540378443859659;  /* sqrt(3/4) == sqrt(3)/2 */
-constexpr double M_SQRT1_3 = 0.57735026918962573106;  /* sqrt(1/3) == sqrt(3)/3 */
-constexpr double M_RAD2DEG = 57.2957795130823208767;  /* 180/PI */
-constexpr double M_DEG2RAD = 0.017453292519943295769; /* PI/180 */
+#include <Eigen/Dense>
 
-double sin_degrees(double x);
-double cos_degrees(double x);
-double tan_degrees(double x);
-double asin_degrees(double x);
-double acos_degrees(double x);
-double atan_degrees(double x);
-double atan2_degrees(double y, double x);
+class QGLView;
 
-Matrix3d angle_axis_degrees(double a, Vector3d v);
-Matrix3d rotate_degrees(double angle);
+Eigen::Vector3d getHitPoint(QGLView *const pQGLView,
+							const std::vector<Eigen::Vector2d> &samplingPattern,
+							const double &apertureInWorld,
+							const Eigen::Vector3d &lookDirection,
+							const Eigen::Vector3d &lookFrom);
 
-void normalizeAngle(double& angle);
-double rad2deg(double x);
-double deg2rad(double x);
+Eigen::Vector3d getCursorInWorld(const QGLView *const pQGLView, uint32_t cursorX, uint32_t cursorY);

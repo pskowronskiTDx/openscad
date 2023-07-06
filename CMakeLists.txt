@@ -45,7 +45,8 @@ option(USE_MIMALLOC "Use mimalloc as malloc replacement." ON)
 option(USE_BUILTIN_OPENCSG "Use OpenCSG from submodule." OFF)
 option(USE_CCACHE "Use ccache to speed up compilation." ON)
 option(ENABLE_CAIRO "Enable support for cairo vector graphics library." ON)
-option(ENABLE_SPNAV "Enable support for libspnav input driver." ON)
+option(ENABLE_3DCONNEXION_NAVLIB "Enable support for 3Dconnexion devices." ON)
+option(ENABLE_SPNAV "Enable support for libspnav input driver." OFF)
 option(ENABLE_HIDAPI "Enable support for HIDAPI input driver." ON)
 option(ENABLE_TBB "Enable support for oneAPI Threading Building Blocks." ON)
 option(ALLOW_BUNDLED_HIDAPI "Allow usage of bundled HIDAPI library (Windows only)." OFF)
@@ -382,6 +383,23 @@ if(ENABLE_HIDAPI)
   endif()
 else()
   message(STATUS "HIDAPI: disabled per user request")
+endif()
+
+if(ENABLE_3DCONNEXION_NAVLIB)
+  if(WIN32 OR APPLE)
+    set(3DCONNEXION_NAVLIB_SOURCES 
+      "src/3Dconnexion/3DMouseInput.cc"
+      "src/3Dconnexion/3DMousePivot.cc" 
+      "src/3dconnexion/sdk/src/navlib_stub.c"
+      "src/3dconnexion/sdk/src/navlib_load.cpp"
+      "src/platform/OpenGLUtils.cc"
+    )
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/3dx_pivot.png DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/icons)
+    file(GLOB SVG_IMAGES ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/svg-default/*.svg)
+    file(COPY ${SVG_IMAGES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/icons)
+    target_compile_definitions(OpenSCAD PRIVATE ENABLE_3DCONNEXION_NAVLIB)
+    target_include_directories(OpenSCAD PRIVATE "src/3dconnexion/sdk/inc")
+    endif()
 endif()
 
 if(ENABLE_SPNAV)
@@ -748,6 +766,12 @@ set(CORE_SOURCES
   ${BISON_openscad_parser_OUTPUTS}
   ${FLEX_comment_lexer_OUTPUTS}
   ${BISON_comment_parser_OUTPUTS})
+
+if(ENABLE_3DCONNEXION_NAVLIB)
+  if(WIN32 OR APPLE)
+    list(APPEND CORE_SOURCES ${3DCONNEXION_NAVLIB_SOURCES})
+  endif()
+endif()
 
 set(CGAL_SOURCES
   src/geometry/GeometryEvaluator.cc
