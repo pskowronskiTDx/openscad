@@ -54,37 +54,6 @@ void GLView::updateColorScheme()
   if (this->renderer) this->renderer->setColorScheme(*this->colorscheme);
 }
 
-void GLView::setPivotPosition(const Eigen::Vector3d &position)
-{
-  pivot.position = position;
-}
-
-void GLView::setPivotIcon(const QString &iconPath)
-{
-  pivot.icon.load(iconPath);
-}
-
-void GLView::setPivotVisibility(bool isVisible)
-{
-  pivot.isVisible = isVisible;
-}
-
-bool GLView::getPivotVisibility() const
-{
-  return pivot.isVisible;
-}
-
-Eigen::Vector3d GLView::getPivotPosition() const 
-{
-  return pivot.position;
-}
-
-void GLView::getCurrentProjection(double out[16]) const
-{
-  memcpy(out, currentProjection, 16u * sizeof(double));
-  return;
-}
-
 /* change this GLView's colorscheme to the one given, and update the
 Renderer attached to this GLView as well. */
 void GLView::setColorScheme(const ColorScheme& cs)
