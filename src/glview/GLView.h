@@ -66,7 +66,7 @@ public:
   bool getPivotVisibility() const;
   Eigen::Vector3d getPivotPosition() const;
   void getCurrentProjection(double out[16]) const;
-  
+
   Renderer *renderer;
   const ColorScheme *colorscheme;
   Camera cam;

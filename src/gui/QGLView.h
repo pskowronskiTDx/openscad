@@ -56,7 +56,7 @@ public:
   void rotate2(double x, double y, double z);
   void translate(double x, double y, double z, bool relative, bool viewPortRelative = true);
   void applyAffine(Eigen::Matrix4d const&);
-  
+
 private:
   void init();
 

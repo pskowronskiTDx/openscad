@@ -496,9 +496,9 @@ void QGLView::rotate2(double x, double y, double z)
   emit cameraChanged();
 }
 
-void QGLView::applyAffine(Eigen::Matrix4d const& matx)
+void QGLView::applyAffine(Eigen::Matrix4d const &matx)
 {
-	cam.setAffine(matx);
-	update();
-	emit cameraChanged();
+  cam.setAffine(matx);
+  update();
+  emit cameraChanged();
 }
