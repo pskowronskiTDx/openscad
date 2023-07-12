@@ -828,9 +828,9 @@ int gui(vector<string>& inputFiles, const fs::path& original_path, int argc, cha
   }
 #endif
 #ifdef ENABLE_3DCONNEXION_NAVLIB
-	TDMouseInput spaceMouse(mainWindow);
-	spaceMouse.enableNavigation();
-	spaceMouse.exportCommands();
+  TDMouseInput spaceMouse(mainWindow);
+  spaceMouse.enableNavigation();
+  spaceMouse.exportCommands();
 #endif
 
   InputDriverManager::instance()->init();
