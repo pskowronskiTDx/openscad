@@ -385,23 +385,6 @@ else()
   message(STATUS "HIDAPI: disabled per user request")
 endif()
 
-if(ENABLE_3DCONNEXION_NAVLIB)
-  if(WIN32 OR APPLE)
-    set(3DCONNEXION_NAVLIB_SOURCES 
-      "src/3Dconnexion/3DMouseInput.cc"
-      "src/3Dconnexion/3DMousePivot.cc" 
-      "src/3dconnexion/sdk/src/navlib_stub.c"
-      "src/3dconnexion/sdk/src/navlib_load.cpp"
-      "src/platform/OpenGLUtils.cc"
-    )
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/3dx_pivot.png DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/icons)
-    file(GLOB SVG_IMAGES ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/svg-default/*.svg)
-    file(COPY ${SVG_IMAGES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/icons)
-    target_compile_definitions(OpenSCAD PRIVATE ENABLE_3DCONNEXION_NAVLIB)
-    target_include_directories(OpenSCAD PRIVATE "src/3dconnexion/sdk/inc")
-    endif()
-endif()
-
 if(ENABLE_SPNAV)
   find_package(SpNav QUIET)
   if(SPNAV_FOUND)
@@ -541,6 +524,25 @@ if(NOT HEADLESS)
     endif()
   else()
     message(STATUS "Qt5Gamepad input driver disabled per user request.")
+  endif()
+ 
+  if(ENABLE_3DCONNEXION_NAVLIB AND (WIN32 OR APPLE))
+    set(3DCONNEXION_NAVLIB_SOURCES
+      "src/3Dconnexion/3DMouseInput.cc"
+      "src/3Dconnexion/3DMousePivot.cc"
+      "src/3dconnexion/sdk/src/navlib_stub.c"
+      "src/3dconnexion/sdk/src/navlib_load.cpp"
+      "src/platform/OpenGLUtils.cc"
+    )
+    set(GUI_SOURCES ${GUI_SOURCES} ${3DCONNEXION_NAVLIB_SOURCES})
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/3dx_pivot.png DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/icons)
+    file(GLOB SVG_IMAGES ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/svg-default/*.svg)
+    file(COPY ${SVG_IMAGES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/icons)
+    target_compile_definitions(OpenSCAD PRIVATE ENABLE_3DCONNEXION_NAVLIB)
+    if(APPLE)
+      target_compile_definitions(OpenSCAD PRIVATE __APPLE__)
+    endif()
+    target_include_directories(OpenSCAD PRIVATE "src/3dconnexion/sdk/inc")
   endif()
 
 endif()
@@ -766,12 +768,6 @@ set(CORE_SOURCES
   ${BISON_openscad_parser_OUTPUTS}
   ${FLEX_comment_lexer_OUTPUTS}
   ${BISON_comment_parser_OUTPUTS})
-
-if(ENABLE_3DCONNEXION_NAVLIB)
-  if(WIN32 OR APPLE)
-    list(APPEND CORE_SOURCES ${3DCONNEXION_NAVLIB_SOURCES})
-  endif()
-endif()
 
 set(CGAL_SOURCES
   src/geometry/GeometryEvaluator.cc

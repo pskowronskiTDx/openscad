@@ -1,50 +1,25 @@
+// -------------------------------------------------------------------------------------------------
+// This source file is part of the OpenSCAD project.
+//
+// Copyright (c) 2014-2023 3Dconnexion.
+//
+// This source code is released under the GNU General Public License, (see "LICENSE").
+// -------------------------------------------------------------------------------------------------
+
 #ifdef ENABLE_3DCONNEXION_NAVLIB
-/*
- *  OpenSCAD (www.openscad.org)
- *  Copyright (C) 2009-2015 Clifford Wolf <clifford@clifford.at> and
- *                          Marius Kintel <marius@kintel.net>
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  As a special exception, you have permission to link this program
- *  with the CGAL library and distribute executables, as long as you
- *  follow the requirements of the GNU GPL in regard to all of the
- *  software in the executable aside from CGAL.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- */
-#pragma once
+#ifndef TDMOUSE_INPUT_H
+#define TDMOUSE_INPUT_H
 
 #include <QObject>
 #include <unordered_map>
+#include <string>
 #include <Eigen/Dense>
-#include "linalg.h"
-#include "Camera.h"
-#include "renderer.h"
-#ifdef __MINGW32__
-#include "windows.h"
-// same symbol..
-#undef DIFFERENCE //#defined in winuser.h
-#endif
 #include <SpaceMouse/CNavigation3D.hpp>
 
 using CNav3D = TDx::SpaceMouse::Navigation3D::CNavigation3D;
 using TDxCommand = TDx::SpaceMouse::CCommand;
 using TDxImage = TDx::CImage;
 using TDxCategory = TDx::SpaceMouse::CCategory;
-
-constexpr uint32_t sampleCount = 30;
 
 class QGLView;
 class QAction;
@@ -61,7 +36,7 @@ public:
 
 private:
   class Command
-  {	
+  {
   public:
     Command() = default;
     Command(QAction *const p_qaction, const std::string &icon_file_name);
@@ -109,7 +84,7 @@ private:
   void initializeCommandsMap();
   void initializeSampling();
   bool checkQGLView() const;
-  TDxCategory getAnimateCategory();
+  TDxCategory getAnimateCategory() const;
 
   MainWindow *m_p_parent_window;
   std::unordered_map<std::string, Command> m_id_to_command;
@@ -118,4 +93,5 @@ private:
   double m_hit_aperture;
   std::vector<Eigen::Vector2d> m_sampling_pattern;
 };
-#endif
+#endif // TDMOUSE_INPUT_H
+#endif // ENABLE_3DCONNEXION_NAVLIB
