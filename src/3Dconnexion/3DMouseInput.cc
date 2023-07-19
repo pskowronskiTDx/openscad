@@ -8,6 +8,9 @@
 
 #include <QtCore/QCoreApplication>
 #include <QAction>
+#include <QIcon>
+#include <QBuffer>
+#include <QByteArray>
 #include "MainWindow.h"
 #include "3DMouseInput.h"
 #include "QGLView.h"
@@ -20,6 +23,7 @@
 constexpr double MIN_ZOOM = 1 ;
 constexpr std::size_t MATRIX_SIZE = 16 * sizeof(double);
 constexpr uint32_t sampleCount = 30;
+constexpr uint8_t LCD_ICON_SIZE = 24u;
 
 bool TDMouseInput::checkQGLView() const {
   if (m_p_parent_window == nullptr) {
@@ -35,11 +39,16 @@ bool TDMouseInput::checkQGLView() const {
 
 TDMouseInput::TDMouseInput(MainWindow *p_parent_window, bool multi_threaded, bool row_major)
   : TDx::SpaceMouse::Navigation3D::CNavigation3D(multi_threaded, row_major),
-    QObject(p_parent_window),
-    m_p_parent_window(p_parent_window)
+  QObject(p_parent_window),
+  m_p_parent_window(p_parent_window)
 {
   QString pivot_icon_path = QCoreApplication::applicationDirPath();
-  pivot_icon_path.append("/resources/icons/3dx_pivot.png");
+
+#ifdef WIN32 
+  pivot_icon_path.append("/3dx_pivot.png");
+#elif __APPLE__
+  pivot_icon_path.append("../Resources/3dx_pivot.png");
+#endif
 
   if (checkQGLView()) {
     m_p_parent_window->qglview->setPivotIcon(pivot_icon_path);
@@ -94,27 +103,20 @@ void TDMouseInput::disableNavigation()
   EnableNavigation(false);
 }
 
-void TDMouseInput::registerCommand(QAction *p_qaction,	const std::string &icon_file_name = "")
+void TDMouseInput::registerCommand(QAction *p_qaction)
 {
   if (p_qaction == nullptr) {
     return;
   }
 
-  std::string icon_file_path;
-  if (!icon_file_name.empty()) {
-    icon_file_path = QCoreApplication::applicationDirPath().toStdString().append("/resources/icons/");
-    icon_file_path.append(icon_file_name);
-  }
-
-  Command new_command(p_qaction, icon_file_path);
+  Command new_command(p_qaction);
   m_id_to_command.emplace(p_qaction->objectName().toStdString(), new_command);
 
   return;
 }
 
-TDMouseInput::Command::Command(QAction *const p_qaction, const std::string &icon_file_path)
-: m_p_qaction(p_qaction),
-  m_icon_path(icon_file_path) {}
+TDMouseInput::Command::Command(QAction *const p_qaction)
+: m_p_qaction(p_qaction) {}
 
 TDxCommand TDMouseInput::Command::toCCommand() const
 {
@@ -132,10 +134,23 @@ TDxCommand TDMouseInput::Command::toCCommand() const
 
 TDxImage TDMouseInput::Command::getCImage() const
 {
-  if (m_icon_path.empty() || (m_p_qaction == nullptr)) {
+  if (m_p_qaction == nullptr) {
     return TDxImage::FromFile("", 0, "NULL");
   }
-  return TDxImage::FromFile(m_icon_path, 0, m_p_qaction->objectName().toStdString().c_str());
+
+  const QIcon iconImg = m_p_qaction->icon();
+
+  if(iconImg.isNull()) {
+    return TDxImage::FromFile("", 0, "NULL");
+  }
+
+  const QImage qimage = iconImg.pixmap(QSize(LCD_ICON_SIZE, LCD_ICON_SIZE)).toImage();
+  QByteArray qbyteArray;
+  QBuffer qbuffer(&qbyteArray);
+  qimage.save(&qbuffer, "PNG");
+
+  return TDxImage::FromData(qbyteArray.toStdString(), 0, m_p_qaction->objectName().toStdString().c_str()); 
+
 }
 
 void TDMouseInput::Command::run()
@@ -157,47 +172,47 @@ void TDMouseInput::initializeCommandsMap()
     return;
   }
 
-  registerCommand(m_p_parent_window->editActionRedo, "redo.svg");
-  registerCommand(m_p_parent_window->editActionUndo, "undo.svg");
-  registerCommand(m_p_parent_window->editActionZoomTextIn, "zoom-text-in.svg");
-  registerCommand(m_p_parent_window->editActionZoomTextOut, "zoom-text-out.svg");
-  registerCommand(m_p_parent_window->editActionUnindent, "unindent.svg");
-  registerCommand(m_p_parent_window->editActionIndent, "indent.svg");
-  registerCommand(m_p_parent_window->fileActionNew, "new.svg");
-  registerCommand(m_p_parent_window->fileActionOpen, "open.svg");
-  registerCommand(m_p_parent_window->fileActionSave, "save.svg");
-  registerCommand(m_p_parent_window->designAction3DPrint, "send.svg");
-  registerCommand(m_p_parent_window->designActionRender, "render.svg");
-  registerCommand(m_p_parent_window->viewActionShowAxes, "axes.svg");
-  registerCommand(m_p_parent_window->viewActionShowEdges, "show-edges.svg");
-  registerCommand(m_p_parent_window->viewActionZoomIn, "zoom-in.svg");
-  registerCommand(m_p_parent_window->viewActionZoomOut, "zoom-out.svg");
-  registerCommand(m_p_parent_window->viewActionTop, "view-top.svg");
-  registerCommand(m_p_parent_window->viewActionBottom, "view-bottom.svg");
-  registerCommand(m_p_parent_window->viewActionLeft, "view-left.svg");
-  registerCommand(m_p_parent_window->viewActionRight, "view-right.svg");
-  registerCommand(m_p_parent_window->viewActionFront, "view-front.svg");
-  registerCommand(m_p_parent_window->viewActionBack, "view-back.svg");
-  registerCommand(m_p_parent_window->viewActionSurfaces, "surface.svg");
-  registerCommand(m_p_parent_window->viewActionWireframe, "wireframe.svg");
-  registerCommand(m_p_parent_window->viewActionShowCrosshairs, "crosshairs.svg");
-  registerCommand(m_p_parent_window->viewActionThrownTogether, "throwntogether.svg");
-  registerCommand(m_p_parent_window->viewActionPerspective, "perspective.svg");
-  registerCommand(m_p_parent_window->viewActionOrthogonal, "orthogonal.svg");
-  registerCommand(m_p_parent_window->designActionPreview, "preview.svg");
-  registerCommand(m_p_parent_window->fileActionExportSTL, "export-stl.svg");
-  registerCommand(m_p_parent_window->fileActionExportAMF, "export-amf.svg");
-  registerCommand(m_p_parent_window->fileActionExport3MF, "export-3mf.svg");
-  registerCommand(m_p_parent_window->fileActionExportOFF, "export-off.svg");
-  registerCommand(m_p_parent_window->fileActionExportWRL, "export-wrl.svg");
-  registerCommand(m_p_parent_window->fileActionExportDXF, "export-dxf.svg");
-  registerCommand(m_p_parent_window->fileActionExportSVG, "export-svg.svg");
-  registerCommand(m_p_parent_window->fileActionExportCSG, "export-csg.svg");
-  registerCommand(m_p_parent_window->fileActionExportPDF, "export-pdf.svg");
-  registerCommand(m_p_parent_window->fileActionExportImage, "export-png.svg");
-  registerCommand(m_p_parent_window->viewActionViewAll, "zoom-all.svg");
-  registerCommand(m_p_parent_window->viewActionResetView, "reset-view.svg");
-  registerCommand(m_p_parent_window->viewActionShowScaleProportional, "scalemarkers.svg");
+  registerCommand(m_p_parent_window->editActionRedo);
+  registerCommand(m_p_parent_window->editActionUndo);
+  registerCommand(m_p_parent_window->editActionZoomTextIn);
+  registerCommand(m_p_parent_window->editActionZoomTextOut);
+  registerCommand(m_p_parent_window->editActionUnindent);
+  registerCommand(m_p_parent_window->editActionIndent);
+  registerCommand(m_p_parent_window->fileActionNew);
+  registerCommand(m_p_parent_window->fileActionOpen);
+  registerCommand(m_p_parent_window->fileActionSave);
+  registerCommand(m_p_parent_window->designAction3DPrint);
+  registerCommand(m_p_parent_window->designActionRender);
+  registerCommand(m_p_parent_window->viewActionShowAxes);
+  registerCommand(m_p_parent_window->viewActionShowEdges);
+  registerCommand(m_p_parent_window->viewActionZoomIn);
+  registerCommand(m_p_parent_window->viewActionZoomOut);
+  registerCommand(m_p_parent_window->viewActionTop);
+  registerCommand(m_p_parent_window->viewActionBottom);
+  registerCommand(m_p_parent_window->viewActionLeft);
+  registerCommand(m_p_parent_window->viewActionRight);
+  registerCommand(m_p_parent_window->viewActionFront);
+  registerCommand(m_p_parent_window->viewActionBack);
+  registerCommand(m_p_parent_window->viewActionSurfaces);
+  registerCommand(m_p_parent_window->viewActionWireframe);
+  registerCommand(m_p_parent_window->viewActionShowCrosshairs);
+  registerCommand(m_p_parent_window->viewActionThrownTogether);
+  registerCommand(m_p_parent_window->viewActionPerspective);
+  registerCommand(m_p_parent_window->viewActionOrthogonal);
+  registerCommand(m_p_parent_window->designActionPreview);
+  registerCommand(m_p_parent_window->fileActionExportSTL);
+  registerCommand(m_p_parent_window->fileActionExportAMF);
+  registerCommand(m_p_parent_window->fileActionExport3MF);
+  registerCommand(m_p_parent_window->fileActionExportOFF);
+  registerCommand(m_p_parent_window->fileActionExportWRL);
+  registerCommand(m_p_parent_window->fileActionExportDXF);
+  registerCommand(m_p_parent_window->fileActionExportSVG);
+  registerCommand(m_p_parent_window->fileActionExportCSG);
+  registerCommand(m_p_parent_window->fileActionExportPDF);
+  registerCommand(m_p_parent_window->fileActionExportImage);
+  registerCommand(m_p_parent_window->viewActionViewAll);
+  registerCommand(m_p_parent_window->viewActionResetView);
+  registerCommand(m_p_parent_window->viewActionShowScaleProportional);
   registerCommand(m_p_parent_window->fileActionNewWindow);
   registerCommand(m_p_parent_window->fileActionOpenWindow);
   registerCommand(m_p_parent_window->fileActionSaveAs);
@@ -264,13 +279,13 @@ void TDMouseInput::initializeCommandsMap()
 
   auto animate_actions = m_p_parent_window->animateWidget->actions();
 
-  registerCommand(animate_actions[0], "animate.svg");
-  registerCommand(animate_actions[1], "vcr-control-start.svg");
-  registerCommand(animate_actions[2], "vcr-control-step-back.svg");
-  registerCommand(animate_actions[3], "vcr-control-play.svg");
-  registerCommand(animate_actions[4], "vcr-control-pause.svg");
-  registerCommand(animate_actions[5], "vcr-control-step-forward.svg");
-  registerCommand(animate_actions[6], "vcr-control-end.svg");
+  registerCommand(animate_actions[0]);
+  registerCommand(animate_actions[1]);
+  registerCommand(animate_actions[2]);
+  registerCommand(animate_actions[3]);
+  registerCommand(animate_actions[4]);
+  registerCommand(animate_actions[5]);
+  registerCommand(animate_actions[6]);
 }
 
 TDxCategory TDMouseInput::getAnimateCategory() const

@@ -535,16 +535,15 @@ if(NOT HEADLESS)
       "src/platform/OpenGLUtils.cc"
     )
     set(GUI_SOURCES ${GUI_SOURCES} ${3DCONNEXION_NAVLIB_SOURCES})
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/3dx_pivot.png DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/icons)
-    file(GLOB SVG_IMAGES ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/svg-default/*.svg)
-    file(COPY ${SVG_IMAGES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/icons)
     target_compile_definitions(OpenSCAD PRIVATE ENABLE_3DCONNEXION_NAVLIB)
-    if(APPLE)
+    if(WIN32)
+      file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/3dx_pivot.png DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+    elseif(APPLE)
       target_compile_definitions(OpenSCAD PRIVATE __APPLE__)
+      list(APPEND RESOURCE_FILES ${RESOURCE_DIR}/icons/3dx_pivot.png)
     endif()
     target_include_directories(OpenSCAD PRIVATE "src/3dconnexion/sdk/inc")
   endif()
-
 endif()
 
 # Setup ccache (if available) to speed up recompiles. It's especially useful

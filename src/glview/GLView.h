@@ -93,7 +93,7 @@ private:
   void decodeMarkerValue(double i, double l, int size_div_sm);
   void drawPivot();
   struct {
-    Eigen::Vector3d position{0};
+    Eigen::Vector3d position{0.0, 0.0, 0.0};
     bool isVisible = false;
     QImage icon;
   } pivot;

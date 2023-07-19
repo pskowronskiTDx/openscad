@@ -7,7 +7,7 @@
 // -------------------------------------------------------------------------------------------------
 
 #include "3DMouseInput.h"
-#include "OpenGlUtils.h"
+#include "OpenGLUtils.h"
 #include "MainWindow.h"
 
 long TDMouseInput::GetPivotPosition(navlib::point_t &p) const

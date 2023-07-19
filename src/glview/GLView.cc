@@ -8,12 +8,6 @@
 #include <cmath>
 #include <cstdio>
 
-#ifdef _WIN32
-#include <GL/wglew.h>
-#elif !defined(__APPLE__)
-#include <GL/glxew.h>
-#endif
-
 #ifdef ENABLE_OPENCSG
 #include <opencsg.h>
 #endif
@@ -30,7 +24,7 @@ GLView::GLView()
   colorscheme = &ColorMap::inst()->defaultColorScheme();
   cam = Camera();
   far_far_away = RenderSettings::inst()->far_gl_clip_limit;
-  RtlZeroMemory(currentProjection, 16u * sizeof(double));
+  memset(currentProjection, 0, 16u * sizeof(double));
 #ifdef ENABLE_OPENCSG
   is_opencsg_capable = false;
   has_shaders = false;

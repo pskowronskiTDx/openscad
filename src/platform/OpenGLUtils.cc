@@ -28,11 +28,11 @@
 #include <Eigen/Dense>
 
 #include "degree_trig.h"
-#include "OpenGlUtils.h"
+#include "OpenGLUtils.h"
 #include "system-gl.h"
 #include "QGLView.h"
 #include "Camera.h"
-#include "renderer.h"
+#include "Renderer.h"
 
 #include <QOpenGLFramebufferObject>
 

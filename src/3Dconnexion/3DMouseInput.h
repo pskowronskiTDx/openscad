@@ -39,14 +39,13 @@ private:
   {
   public:
     Command() = default;
-    Command(QAction *const p_qaction, const std::string &icon_file_name);
+    Command(QAction *const p_qaction);
     TDxCommand toCCommand() const;
     TDxImage getCImage() const;
     void run();
 
    private:
     QAction *m_p_qaction{nullptr};
-    const std::string m_icon_path{""};
   };
 
   long GetCoordinateSystem(navlib::matrix_t &) const override;
@@ -57,7 +56,7 @@ private:
   long GetViewExtents(navlib::box_t &) const override;
   long GetViewFrustum(navlib::frustum_t &) const override;
   long GetFrontView(navlib::matrix_t &)const override;
-  long GetIsSelectionEmpty(navlib::bool_t &) const;
+  long GetIsSelectionEmpty(navlib::bool_t &) const override;
   long GetPivotPosition(navlib::point_t &) const override;
   long GetHitLookAt(navlib::point_t &) const override;
   long GetPivotVisible(navlib::bool_t &) const override;
@@ -71,7 +70,7 @@ private:
   long SetViewExtents(const navlib::box_t &) override;
   long SetViewFrustum(const navlib::frustum_t &) override;
   long SetPivotPosition(const navlib::point_t &) override;
-  long SetHitAperture(double);
+  long SetHitAperture(double) override;
   long SetHitDirection(const navlib::vector_t &) override;
   long SetHitSelectionOnly(bool) override;
   long SetHitLookFrom(const navlib::point_t &) override;
@@ -80,7 +79,7 @@ private:
   long SetActiveCommand(std::string) override;
   long IsUserPivot(navlib::bool_t &) const override;
 
-  void registerCommand(QAction *p_qaction, const std::string &icon_file_name);
+  void registerCommand(QAction *p_qaction);
   void initializeCommandsMap();
   void initializeSampling();
   bool checkQGLView() const;
