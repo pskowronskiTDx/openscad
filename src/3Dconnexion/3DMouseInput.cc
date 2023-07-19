@@ -47,7 +47,7 @@ TDMouseInput::TDMouseInput(MainWindow *p_parent_window, bool multi_threaded, boo
 #ifdef WIN32 
   pivot_icon_path.append("/3dx_pivot.png");
 #elif __APPLE__
-  pivot_icon_path.append("../Resources/3dx_pivot.png");
+  pivot_icon_path.append("/../Resources/3dx_pivot.png");
 #endif
 
   if (checkQGLView()) {
