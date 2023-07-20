@@ -42,16 +42,8 @@ TDMouseInput::TDMouseInput(MainWindow *p_parent_window, bool multi_threaded, boo
   QObject(p_parent_window),
   m_p_parent_window(p_parent_window)
 {
-  QString pivot_icon_path = QCoreApplication::applicationDirPath();
-
-#ifdef WIN32 
-  pivot_icon_path.append("/3dx_pivot.png");
-#elif __APPLE__
-  pivot_icon_path.append("/../Resources/3dx_pivot.png");
-#endif
-
   if (checkQGLView()) {
-    m_p_parent_window->qglview->setPivotIcon(pivot_icon_path);
+    m_p_parent_window->qglview->setPivotIcon(":/icons/3dx_pivot.png");
   }
 }
 
