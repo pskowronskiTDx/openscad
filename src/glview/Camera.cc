@@ -228,7 +228,7 @@ Eigen::Affine3d Camera::getViewMatrix() const
 {
   Eigen::Affine3d viewAffine;
   viewAffine.matrix() << 1.000, 0.000, 0.000, 0.000,
-                         0.000, 0.000, 1.000, 0, 
+                         0.000, 0.000, 1.000, 0,
                          0.000, -1.000, 0.000, -viewer_distance,
                          0, 0, 0, 1;
   return viewAffine;
@@ -236,10 +236,10 @@ Eigen::Affine3d Camera::getViewMatrix() const
 
 Eigen::Affine3d Camera::getModelMatrix() const
 {
-  Eigen::Affine3d rx = Eigen::Affine3d(Eigen::AngleAxisd(deg2rad(object_rot.x()), Eigen::Vector3d::UnitX()));
-  Eigen::Affine3d ry = Eigen::Affine3d(Eigen::AngleAxisd(deg2rad(object_rot.y()), Eigen::Vector3d::UnitY()));
-  Eigen::Affine3d rz = Eigen::Affine3d(Eigen::AngleAxisd(deg2rad(object_rot.z()), Eigen::Vector3d::UnitZ()));
-  Eigen::Affine3d t = Eigen::Affine3d(Eigen::Translation3d(object_trans));
+  auto rx = Eigen::Affine3d(Eigen::AngleAxisd(deg2rad(object_rot.x()), Eigen::Vector3d::UnitX()));
+  auto ry = Eigen::Affine3d(Eigen::AngleAxisd(deg2rad(object_rot.y()), Eigen::Vector3d::UnitY()));
+  auto rz = Eigen::Affine3d(Eigen::AngleAxisd(deg2rad(object_rot.z()), Eigen::Vector3d::UnitZ()));
+  auto t = Eigen::Affine3d(Eigen::Translation3d(object_trans));
   return rx * ry * rz * t;
 }
 

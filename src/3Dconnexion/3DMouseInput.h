@@ -6,15 +6,16 @@
 // This source code is released under the GNU General Public License, (see "LICENSE").
 // -------------------------------------------------------------------------------------------------
 
-#ifdef ENABLE_3DCONNEXION_NAVLIB
 #ifndef TDMOUSE_INPUT_H
 #define TDMOUSE_INPUT_H
 
-#include <QObject>
-#include <unordered_map>
-#include <string>
-#include <Eigen/Dense>
 #include <SpaceMouse/CNavigation3D.hpp>
+
+#include <Eigen/Dense>
+#include <QObject>
+
+#include <string>
+#include <unordered_map>
 
 using CNav3D = TDx::SpaceMouse::Navigation3D::CNavigation3D;
 using TDxCommand = TDx::SpaceMouse::CCommand;
@@ -39,7 +40,7 @@ private:
   {
   public:
     Command() = default;
-    Command(QAction *const p_qaction);
+    explicit Command(QAction *const p_qaction);
     TDxCommand toCCommand() const;
     TDxImage getCImage() const;
     void run();
@@ -93,4 +94,3 @@ private:
   std::vector<Eigen::Vector2d> m_sampling_pattern;
 };
 #endif // TDMOUSE_INPUT_H
-#endif // ENABLE_3DCONNEXION_NAVLIB

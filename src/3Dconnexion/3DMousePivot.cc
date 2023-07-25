@@ -7,8 +7,8 @@
 // -------------------------------------------------------------------------------------------------
 
 #include "3DMouseInput.h"
-#include "OpenGLUtils.h"
 #include "MainWindow.h"
+#include "OpenGLUtils.h"
 
 long TDMouseInput::GetPivotPosition(navlib::point_t &p) const
 {
@@ -16,7 +16,9 @@ long TDMouseInput::GetPivotPosition(navlib::point_t &p) const
     return navlib::make_result_code(navlib::navlib_errc::no_data_available);
   }
 
-  std::memcpy(&p.x, m_p_parent_window->qglview->getPivotPosition().data(), sizeof(double) * 3u);
+  const auto pivotPosition = m_p_parent_window->qglview->getPivotPosition();
+
+  std::memcpy(&p, pivotPosition.data(), pivotPosition.size() * sizeof(double));
   return 0;
 }
 
@@ -66,7 +68,7 @@ long TDMouseInput::SetHitAperture(double hitAperture)
 
 long TDMouseInput::SetHitDirection(const navlib::vector_t &hitDir)
 {
-  std::memcpy(m_hit_direction.data(), &hitDir.x, sizeof(double) * m_hit_direction.size());
+  std::memcpy(m_hit_direction.data(), &hitDir, m_hit_direction.size() * sizeof(double));
   return 0;
 }
 
@@ -77,7 +79,7 @@ long TDMouseInput::SetHitSelectionOnly(bool hso)
 
 long TDMouseInput::SetHitLookFrom(const navlib::point_t &hitLookFrom)
 {
-  std::memcpy(m_hit_look_from.data(), &hitLookFrom.x, sizeof(double) * m_hit_look_from.size());
+  std::memcpy(m_hit_look_from.data(), &hitLookFrom, m_hit_look_from.size() * sizeof(double));
   return 0;
 }
 
@@ -118,6 +120,6 @@ long TDMouseInput::GetPointerPosition(navlib::point_t & p) const {
 
   setGLContext(oldContext);
 
-  std::memcpy(&p.x, cursorCoordinates.data(), cursorCoordinates.size() * sizeof(double));
+  std::memcpy(&p, cursorCoordinates.data(), cursorCoordinates.size() * sizeof(double));
   return 0;
 }

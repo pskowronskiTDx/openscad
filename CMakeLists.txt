@@ -525,7 +525,7 @@ if(NOT HEADLESS)
   else()
     message(STATUS "Qt5Gamepad input driver disabled per user request.")
   endif()
- 
+
   if(ENABLE_3DCONNEXION_NAVLIB AND (WIN32 OR APPLE))
     set(3DCONNEXION_NAVLIB_SOURCES
       "src/3Dconnexion/3DMouseInput.cc"

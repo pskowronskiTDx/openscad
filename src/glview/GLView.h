@@ -16,11 +16,10 @@ QGLView only uses GimbalCamera while OffscreenView can use either one.
 Some actions (showCrossHairs) only work properly on Gimbal Camera.
 
 */
-#include <QImage>
-#include <QString>
-
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <QImage>
+#include <QString>
 #include <string>
 #include <iostream>
 #include "Camera.h"

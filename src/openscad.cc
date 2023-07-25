@@ -70,7 +70,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/optional.hpp>
 
+#ifdef ENABLE_3DCONNEXION_NAVLIB
 #include "3Dconnexion/3DMouseInput.h"
+#endif
 
 #ifdef _WIN32
 #include <io.h>
@@ -828,11 +830,11 @@ int gui(vector<string>& inputFiles, const fs::path& original_path, int argc, cha
   }
 #endif
 #ifdef ENABLE_3DCONNEXION_NAVLIB
-  TDMouseInput *pSpaceMouse = new TDMouseInput(mainWindow);
+  auto pSpaceMouse = new TDMouseInput(mainWindow);
   pSpaceMouse->enableNavigation();
   pSpaceMouse->exportCommands();
 #endif
-  
+
   InputDriverManager::instance()->init();
   int rc = app.exec();
   const auto& windows = scadApp->windowManager.getWindows();

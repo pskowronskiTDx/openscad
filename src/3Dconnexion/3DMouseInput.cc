@@ -6,24 +6,25 @@
 // This source code is released under the GNU General Public License, (see "LICENSE").
 // -------------------------------------------------------------------------------------------------
 
-#include <QtCore/QCoreApplication>
+#include "3DMouseInput.h"
+#include "degree_trig.h"
+#include "MainWindow.h"
+#include "QGLView.h"
+#include "Renderer.h"
+
 #include <QAction>
-#include <QIcon>
 #include <QBuffer>
 #include <QByteArray>
-#include "MainWindow.h"
-#include "3DMouseInput.h"
-#include "QGLView.h"
-#include "degree_trig.h"
-#include "renderer.h"
+#include <QtCore/QCoreApplication>
+#include <QIcon>
 
 #include <algorithm>
 #include <array>
 
 constexpr double MIN_ZOOM = 1 ;
-constexpr std::size_t MATRIX_SIZE = 16 * sizeof(double);
-constexpr uint32_t sampleCount = 30;
+constexpr uint32_t SAMPLE_COUNT = 30u;
 constexpr uint8_t LCD_ICON_SIZE = 24u;
+constexpr uint8_t MATRIX_SIZE = 16u;
 
 bool TDMouseInput::checkQGLView() const {
   if (m_p_parent_window == nullptr) {
@@ -40,7 +41,8 @@ bool TDMouseInput::checkQGLView() const {
 TDMouseInput::TDMouseInput(MainWindow *p_parent_window, bool multi_threaded, bool row_major)
   : TDx::SpaceMouse::Navigation3D::CNavigation3D(multi_threaded, row_major),
   QObject(p_parent_window),
-  m_p_parent_window(p_parent_window)
+  m_p_parent_window(p_parent_window),
+  m_sampling_pattern(SAMPLE_COUNT, { 0.0, 0.0 })
 {
   if (checkQGLView()) {
     m_p_parent_window->qglview->setPivotIcon(":/icons/3dx_pivot.png");
@@ -49,19 +51,18 @@ TDMouseInput::TDMouseInput(MainWindow *p_parent_window, bool multi_threaded, boo
 
 void TDMouseInput::initializeSampling()
 {
-  m_sampling_pattern.resize(sampleCount);
 
-  if (sampleCount > 0) {
+  if (m_sampling_pattern.size() > 0) {
     m_sampling_pattern.at(0)[0] = 0.0;
     m_sampling_pattern.at(0)[1] = 0.0;
   }
 
-  for (uint32_t i = 1; i < sampleCount; i++) {
-    float coefficient =
-    sqrt(static_cast<float>(i) / static_cast<float>(sampleCount));
-    float angle = 2.4f * static_cast<float>(i);
-    float x = coefficient * sin(angle);
-    float y = coefficient * cos(angle);
+  for (uint32_t i = 1; i < m_sampling_pattern.size(); i++) {
+    const float coefficient =
+    sqrt(static_cast<float>(i) / static_cast<float>(m_sampling_pattern.size()));
+    const float angle = 2.4f * static_cast<float>(i);
+    const float x = coefficient * sin(angle);
+    const float y = coefficient * cos(angle);
     m_sampling_pattern.at(i)[0] = x;
     m_sampling_pattern.at(i)[1] = y;
   }
@@ -71,7 +72,14 @@ void TDMouseInput::initializeSampling()
 
 TDMouseInput::~TDMouseInput()
 {
-  disableNavigation();
+  try
+  {
+    disableNavigation();
+  }
+  catch(const std::system_error &sys_err)
+  {
+    std::cerr << sys_err.what() << '\n';
+  }
 }
 
 bool TDMouseInput::enableNavigation()
@@ -102,7 +110,7 @@ void TDMouseInput::registerCommand(QAction *p_qaction)
   }
 
   Command new_command(p_qaction);
-  m_id_to_command.emplace(p_qaction->objectName().toStdString(), new_command);
+  m_id_to_command.try_emplace(p_qaction->objectName().toStdString(), new_command);
 
   return;
 }
@@ -117,7 +125,7 @@ TDxCommand TDMouseInput::Command::toCCommand() const
   }
 
   std::string id = m_p_qaction->objectName().toStdString();
-  std::string name = m_p_qaction->tr(m_p_qaction->iconText().toStdString().c_str()).toStdString();
+  std::string name = QAction::tr(m_p_qaction->iconText().toStdString().c_str()).toStdString();
   std::string description = m_p_qaction->whatsThis().toStdString();
   description.append(m_p_qaction->toolTip().toStdString());
 
@@ -141,7 +149,7 @@ TDxImage TDMouseInput::Command::getCImage() const
   QBuffer qbuffer(&qbyteArray);
   qimage.save(&qbuffer, "PNG");
 
-  return TDxImage::FromData(qbyteArray.toStdString(), 0, m_p_qaction->objectName().toStdString().c_str()); 
+  return TDxImage::FromData(qbyteArray.toStdString(), 0, m_p_qaction->objectName().toStdString().c_str());
 
 }
 
@@ -304,7 +312,7 @@ TDxCategory TDMouseInput::getAnimateCategory() const
   auto animate_actions = m_p_parent_window->animateWidget->actions();
   uint32_t itr = 0u;
 
-  for (QAction * action : animate_actions) {
+  for (const QAction *action : animate_actions) {
     if (action == nullptr) {
       itr++;
       continue;
@@ -347,7 +355,7 @@ void TDMouseInput::exportCommands()
     m_p_parent_window->menuHelp,
     m_p_parent_window->menuWindow};
 
-  for (QMenu *p_qmenu : p_qmenus) {
+  for (const QMenu *p_qmenu : p_qmenus) {
     if (p_qmenu == nullptr) {
       continue;
     }
@@ -356,7 +364,7 @@ void TDMouseInput::exportCommands()
     title.erase(std::remove(title.begin(), title.end(), '&'), title.end());
     TDx::SpaceMouse::CCategory menu(title, title);
 
-    for (QAction *p_qaction : p_qmenu->actions()) {
+    for (const QAction *p_qaction : p_qmenu->actions()) {
       if (p_qaction == nullptr) {
         continue;
       }
@@ -373,9 +381,9 @@ void TDMouseInput::exportCommands()
 
   std::vector<TDx::CImage> images;
 
-  for (auto &entry : m_id_to_command) {
-    if (!entry.second.getCImage().empty()) {
-      images.push_back(entry.second.getCImage());
+  for (const auto &[key, command] : m_id_to_command) {
+    if (!command.getCImage().empty()) {
+      images.push_back(command.getCImage());
     }
   }
 
@@ -388,9 +396,7 @@ void TDMouseInput::exportCommands()
 
 long TDMouseInput::GetCoordinateSystem(navlib::matrix_t &matrix) const
 {
-  matrix.m00 = 1.0;
-  std::memcpy(&matrix.m00, Eigen::Matrix4d::Identity().eval().data(), MATRIX_SIZE);
-
+  std::copy_n(Eigen::Matrix4d::Identity().eval().data(), MATRIX_SIZE, matrix.begin());
   return 0;
 }
 
@@ -400,7 +406,7 @@ long TDMouseInput::GetCameraMatrix(navlib::matrix_t &affine) const
     return navlib::make_result_code(navlib::navlib_errc::no_data_available);
   }
 
-  std::memcpy(&affine.m00, m_p_parent_window->qglview->cam.getAffine().data(), MATRIX_SIZE);
+  std::copy_n(m_p_parent_window->qglview->cam.getAffine().data(), MATRIX_SIZE, affine.begin());
 
   return 0;
 }
@@ -415,7 +421,7 @@ long TDMouseInput::SetCameraMatrix(const navlib::matrix_t &affine)
   auto buffer = m_p_parent_window->qglview->cam;
   buffer.setAffine(newAffine);
 
-  for (uint8_t i = 0; i < 16; i++) {
+  for (uint8_t i = 0; i < MATRIX_SIZE; i++) {
     if (std::isnan(buffer.getAffine().data()[i])) {
       return navlib::make_result_code(navlib::navlib_errc::invalid_argument);
     }
@@ -476,9 +482,9 @@ long TDMouseInput::GetModelExtents(navlib::box_t &nav_box) const
     return navlib::make_result_code(navlib::navlib_errc::no_data_available);
   }
 
-  std::memcpy(&nav_box.min.x, box.min().data(), 3 * sizeof(double));
-  std::memcpy(&nav_box.max.x, box.max().data(), 3 * sizeof(double));
-
+  std::memcpy(&nav_box.min, box.min().data(), box.min().size() * sizeof(double));
+  std::memcpy(&nav_box.max, box.max().data(), box.min().size() * sizeof(double));
+ 
   return 0;
 }
 
@@ -534,15 +540,9 @@ long TDMouseInput::GetViewFrustum(navlib::frustum_t &f) const
   return 0;
 }
 
-long TDMouseInput::SetViewFrustum(const navlib::frustum_t &f)
+long TDMouseInput::SetViewFrustum(const navlib::frustum_t &)
 {
   return navlib::make_result_code(navlib::navlib_errc::function_not_supported);
-}
-
-long TDMouseInput::GetFrontView(navlib::matrix_t &matrix) const
-{
-  std::memcpy(&matrix.m00, Eigen::Matrix4d::Identity().eval().data(), MATRIX_SIZE);
-  return 0;
 }
 
 long TDMouseInput::GetUnitsToMeters(double &factor) const
@@ -580,3 +580,12 @@ long TDMouseInput::SetSelectionTransform(const navlib::matrix_t &)
 {
   return navlib::make_result_code(navlib::navlib_errc::no_data_available);
 }
+
+long TDMouseInput::GetFrontView(navlib::matrix_t &matrix) const
+{
+  matrix = { 1.0, 0.0, 0.0, 0.0,
+             0.0, 0.0, 1.0, 0.0,
+             0.0,-1.0, 0.0, 0.0,
+             0.0, 0.0, 0.0, 1.0 };
+  return 0;
+};
