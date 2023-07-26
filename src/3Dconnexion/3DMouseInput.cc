@@ -22,7 +22,6 @@
 #include <array>
 
 constexpr double MIN_ZOOM = 1 ;
-constexpr uint32_t SAMPLE_COUNT = 30u;
 constexpr uint8_t LCD_ICON_SIZE = 24u;
 constexpr uint8_t MATRIX_SIZE = 16u;
 
@@ -41,8 +40,7 @@ bool TDMouseInput::checkQGLView() const {
 TDMouseInput::TDMouseInput(MainWindow *p_parent_window, bool multi_threaded, bool row_major)
   : TDx::SpaceMouse::Navigation3D::CNavigation3D(multi_threaded, row_major),
   QObject(p_parent_window),
-  m_p_parent_window(p_parent_window),
-  m_sampling_pattern(SAMPLE_COUNT, { 0.0, 0.0 })
+  m_p_parent_window(p_parent_window)
 {
   if (checkQGLView()) {
     m_p_parent_window->qglview->setPivotIcon(":/icons/3dx_pivot.png");
@@ -51,12 +49,6 @@ TDMouseInput::TDMouseInput(MainWindow *p_parent_window, bool multi_threaded, boo
 
 void TDMouseInput::initializeSampling()
 {
-
-  if (m_sampling_pattern.size() > 0) {
-    m_sampling_pattern.at(0)[0] = 0.0;
-    m_sampling_pattern.at(0)[1] = 0.0;
-  }
-
   for (uint32_t i = 1; i < m_sampling_pattern.size(); i++) {
     const float coefficient =
     sqrt(static_cast<float>(i) / static_cast<float>(m_sampling_pattern.size()));
@@ -66,8 +58,6 @@ void TDMouseInput::initializeSampling()
     m_sampling_pattern.at(i)[0] = x;
     m_sampling_pattern.at(i)[1] = y;
   }
-
-  return;
 }
 
 TDMouseInput::~TDMouseInput()
@@ -482,9 +472,9 @@ long TDMouseInput::GetModelExtents(navlib::box_t &nav_box) const
     return navlib::make_result_code(navlib::navlib_errc::no_data_available);
   }
 
-  std::memcpy(&nav_box.min, box.min().data(), box.min().size() * sizeof(double));
-  std::memcpy(&nav_box.max, box.max().data(), box.min().size() * sizeof(double));
- 
+  std::copy_n(box.min().data(), box.min().size(), &nav_box.min.x);
+  std::copy_n(box.max().data(), box.max().size(), &nav_box.max.x);
+
   return 0;
 }
 

@@ -18,7 +18,8 @@ long TDMouseInput::GetPivotPosition(navlib::point_t &p) const
 
   const auto pivotPosition = m_p_parent_window->qglview->getPivotPosition();
 
-  std::memcpy(&p, pivotPosition.data(), pivotPosition.size() * sizeof(double));
+  std::copy_n(pivotPosition.data(), pivotPosition.size(), &p.x);
+
   return 0;
 }
 
@@ -68,7 +69,7 @@ long TDMouseInput::SetHitAperture(double hitAperture)
 
 long TDMouseInput::SetHitDirection(const navlib::vector_t &hitDir)
 {
-  std::memcpy(m_hit_direction.data(), &hitDir, m_hit_direction.size() * sizeof(double));
+  std::copy_n(&hitDir.x, m_hit_direction.size(), m_hit_direction.data());
   return 0;
 }
 
@@ -79,7 +80,7 @@ long TDMouseInput::SetHitSelectionOnly(bool hso)
 
 long TDMouseInput::SetHitLookFrom(const navlib::point_t &hitLookFrom)
 {
-  std::memcpy(m_hit_look_from.data(), &hitLookFrom, m_hit_look_from.size() * sizeof(double));
+  std::copy_n(&hitLookFrom.x, m_hit_look_from.size(), m_hit_look_from.data() );
   return 0;
 }
 
@@ -120,6 +121,7 @@ long TDMouseInput::GetPointerPosition(navlib::point_t & p) const {
 
   setGLContext(oldContext);
 
-  std::memcpy(&p, cursorCoordinates.data(), cursorCoordinates.size() * sizeof(double));
+  std::copy_n(cursorCoordinates.data(), cursorCoordinates.size(), &p.x);
+
   return 0;
 }

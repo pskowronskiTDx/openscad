@@ -91,6 +91,6 @@ private:
   Eigen::Vector3d m_hit_direction;
   Eigen::Vector3d m_hit_look_from;
   double m_hit_aperture;
-  std::vector<Eigen::Vector2d> m_sampling_pattern;
+  std::vector<Eigen::Vector2d> m_sampling_pattern{30u, { 0.0, 0.0 }};
 };
 #endif // TDMOUSE_INPUT_H
