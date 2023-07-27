@@ -472,8 +472,8 @@ long TDMouseInput::GetModelExtents(navlib::box_t &nav_box) const
     return navlib::make_result_code(navlib::navlib_errc::no_data_available);
   }
 
-  std::copy_n(box.min().data(), box.min().size(), &nav_box.min.x);
-  std::copy_n(box.max().data(), box.max().size(), &nav_box.max.x);
+  std::copy_n(box.min().data(), 3u, &nav_box.min.x);
+  std::copy_n(box.max().data(), 3u, &nav_box.max.x);
 
   return 0;
 }

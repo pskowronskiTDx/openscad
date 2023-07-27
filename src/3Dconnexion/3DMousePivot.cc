@@ -80,7 +80,7 @@ long TDMouseInput::SetHitSelectionOnly(bool hso)
 
 long TDMouseInput::SetHitLookFrom(const navlib::point_t &hitLookFrom)
 {
-  std::copy_n(&hitLookFrom.x, m_hit_look_from.size(), m_hit_look_from.data() );
+  std::copy_n(&hitLookFrom.x, m_hit_look_from.size(), m_hit_look_from.data());
   return 0;
 }
 
