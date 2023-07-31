@@ -18,7 +18,7 @@ long TDMouseInput::GetPivotPosition(navlib::point_t &p) const
 
   const auto pivotPosition = m_p_parent_window->qglview->getPivotPosition();
 
-  std::copy_n(pivotPosition.data(), pivotPosition.size(), &p.x);
+  std::copy_n(pivotPosition.data(), 3u, &p.x);
 
   return 0;
 }
@@ -121,7 +121,7 @@ long TDMouseInput::GetPointerPosition(navlib::point_t & p) const {
 
   setGLContext(oldContext);
 
-  std::copy_n(cursorCoordinates.data(), cursorCoordinates.size(), &p.x);
+  std::copy_n(cursorCoordinates.data(), 3u, &p.x);
 
   return 0;
 }
